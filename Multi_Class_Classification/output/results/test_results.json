@@ -1,0 +1,93 @@
+{
+    "model_config": {
+        "num_classes": 5,
+        "input_length": 300,
+        "parameters": 13361221
+    },
+    "test_metrics": {
+        "accuracy": 0.6285333333333334,
+        "precision_macro": 0.6913766256363447,
+        "recall_macro": 0.6512945724125899,
+        "f1_macro": 0.6124115651724605,
+        "precision_weighted": 0.7017790190333164,
+        "recall_weighted": 0.6285333333333334,
+        "f1_weighted": 0.597071949222248,
+        "confusion_matrix": [
+            [
+                308,
+                403,
+                31,
+                820,
+                223
+            ],
+            [
+                6,
+                1117,
+                18,
+                123,
+                165
+            ],
+            [
+                0,
+                68,
+                1324,
+                12,
+                24
+            ],
+            [
+                20,
+                379,
+                22,
+                754,
+                254
+            ],
+            [
+                4,
+                113,
+                5,
+                96,
+                1211
+            ]
+        ],
+        "per_class": {
+            "Normal": {
+                "precision": 0.9112426035502958,
+                "recall": 0.17254901960784313,
+                "f1": 0.29015544041450775
+            },
+            "AV Block": {
+                "precision": 0.5370192307692307,
+                "recall": 0.781665500349895,
+                "f1": 0.6366486178398404
+            },
+            "Complete Heart Block": {
+                "precision": 0.9457142857142857,
+                "recall": 0.927170868347339,
+                "f1": 0.9363507779349364
+            },
+            "RBBB": {
+                "precision": 0.41772853185595565,
+                "recall": 0.5276417074877536,
+                "f1": 0.46629560915275203
+            },
+            "LBBB": {
+                "precision": 0.6451784762919552,
+                "recall": 0.8474457662701189,
+                "f1": 0.7326073805202662
+            }
+        },
+        "roc_auc": 0.9015613750374776
+    },
+    "history": {
+        "train_loss": [],
+        "val_loss": [],
+        "train_accuracy": [],
+        "val_accuracy": [],
+        "train_f1": [],
+        "val_f1": [],
+        "train_precision": [],
+        "val_precision": [],
+        "train_recall": [],
+        "val_recall": []
+    }
+}

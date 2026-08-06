@@ -1,0 +1,20 @@
+{
+    "model": "Bidirectional GRU (Advanced)",
+    "test_accuracy": 0.6397799849510193,
+    "test_loss": 0.6312954425811768,
+    "precision": 0.6444691247622942,
+    "recall": 0.63978,
+    "f1_score": 0.6368331163147564,
+    "roc_auc": 0.6956971225999999,
+    "confusion_matrix": [
+        [
+            27485,
+            22515
+        ],
+        [
+            13507,
+            36493
+        ]
+    ],
+    "parameters": 23361
+}

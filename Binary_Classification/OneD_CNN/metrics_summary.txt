@@ -1,0 +1,36 @@
+
+ECG BINARY CLASSIFICATION - 1D CNN RESULTS (COMPLETED)
+================================================================================
+Timestamp: 20260501_215441
+
+MODEL: 1D CNN (4 Convolutional Blocks)
+STATUS: ✓ COMPLETED
+
+PERFORMANCE METRICS:
+- Test Accuracy: 0.8477 (84.77%)
+- Test Loss: 0.3394
+- ROC-AUC Score: 0.8477
+- Total Parameters: 176,897
+
+TRAINING SUMMARY:
+- Epochs Trained: 12/30
+- Best Epoch: 7
+- Early Stopping: Yes (patience=5)
+- Callback: ReduceLROnPlateau triggered at epoch 6 & 10
+
+CLASS PERFORMANCE:
+- No Block (Class 0): Precision=0.8520, Recall=0.8495, F1=0.8507
+- Block Present (Class 1): Precision=0.8499, Recall=0.8527, F1=0.8513
+
+CONFIGURATION:
+- Input shape: (300, 1)
+- Batch size: 256
+- Optimizer: Adam (lr=0.001)
+- Loss: binary_crossentropy
+
+RESULTS SAVED IN:
+/Users/skandashyam/Desktop/MajorProject/Project/Binary_Classification/OneD_CNN/
+- metrics.json (this file)
+- metrics_summary.txt (this file)
+
+================================================================================

@@ -1,0 +1,20 @@
+{
+    "model": "1D CNN (Advanced)",
+    "test_accuracy": 0.8692600131034851,
+    "test_loss": 0.2901743948459625,
+    "precision": 0.8737927659799956,
+    "recall": 0.86926,
+    "f1_score": 0.8688624429098302,
+    "roc_auc": 0.9422287104,
+    "confusion_matrix": [
+        [
+            46216,
+            3784
+        ],
+        [
+            9290,
+            40710
+        ]
+    ],
+    "parameters": 43585
+}

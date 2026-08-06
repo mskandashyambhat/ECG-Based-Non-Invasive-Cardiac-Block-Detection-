@@ -1,0 +1,47 @@
+{
+    "dataset_shape": [
+        3045578,
+        300
+    ],
+    "label_set": [
+        0,
+        1,
+        2,
+        3,
+        4
+    ],
+    "class_distribution": {
+        "0": 725138,
+        "1": 580110,
+        "2": 580110,
+        "3": 580110,
+        "4": 580110
+    },
+    "split_leakage_count": 1608,
+    "dataloader_signal_shape": [
+        128,
+        300
+    ],
+    "dataloader_label_shape": [
+        128
+    ],
+    "forward_logits_shape": [
+        128,
+        5
+    ],
+    "attention_shape": null,
+    "initial_loss": 2.096161127090454,
+    "gpu_memory_allocated_mb": null,
+    "gpu_memory_reserved_mb": null,
+    "sanity_train_loss": 2.2665412425994873,
+    "checkpoint_epoch": 0,
+    "checkpoint_metrics": {
+        "loss": 2.2665412425994873
+    },
+    "torchmetrics": {
+        "accuracy": 0.1875,
+        "precision_macro": 0.2814050614833832,
+        "recall_macro": 0.1866300404071808,
+        "f1_macro": 0.17541071772575378
+    }
+}
