@@ -4,11 +4,15 @@ A comprehensive deep learning system for detecting and classifying cardiac arrhy
 
 ## 🏥 Overview
 
-This project implements an automated heart block detection system using ECG signals. It processes and integrates multiple publicly available ECG datasets and applies machine learning techniques to classify three heart block conditions:
+This project implements an automated ECG-based heart block detection and classification system. It processes and integrates multiple publicly available ECG datasets and applies deep learning techniques for both binary and multi-class cardiac diagnosis tasks.
 
-- **Normal**: No cardiac abnormalities
-- **First-degree AV Block**: Delayed electrical conduction
-- **Complete Heart Block**: Blocked electrical signal transmission
+The repository now includes a dedicated multi-class classification pipeline for identifying:
+
+- **Normal ECG**
+- **AV Block**
+- **Complete Heart Block**
+- **Right Bundle Branch Block (RBBB)**
+- **Left Bundle Branch Block (LBBB)**
 
 ## 📊 Datasets
 
@@ -32,8 +36,15 @@ The project integrates ECG data from multiple sources:
 
 ```
 Project/
-├── dataset_analysis.py              # Comprehensive dataset analysis script
-├── Binary_Classification/           # Binary classification models
+├── dataset_analysis.py                  # Comprehensive dataset analysis script
+├── Binary_Classification/               # Binary classification experiments
+├── Multi_Class_Classification/          # Multi-class ECG classification module
+│   ├── train.py                         # Training pipeline
+│   ├── predict.py                       # Inference and prediction script
+│   ├── model.py                         # Hybrid deep learning model
+│   ├── dataset.py                       # Dataset loading and preprocessing
+│   ├── config.py                        # Training configuration
+│   └── output/                          # Saved models, logs, and results
 ├── Dataset/
 │   ├── ecg_preprocessing_pipeline.py          # Main preprocessing pipeline
 │   ├── ecg_preprocessing_pipeline_all5.py     # Extended preprocessing (5 classes)
@@ -58,14 +69,15 @@ Project/
 - **pandas** - Data manipulation
 - **wfdb** - ECG signal reading and processing
 - **scikit-learn** - Machine learning
-- **TensorFlow/Keras** - Deep learning (if applicable)
+- **PyTorch** - Deep learning model training and inference
+- **TensorFlow/Keras** - Additional deep learning support where applicable
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 ```bash
-pip install numpy scipy pandas wfdb scikit-learn tqdm
+pip install numpy scipy pandas wfdb scikit-learn tqdm torch
 ```
 
 ### Data Preprocessing
@@ -80,6 +92,21 @@ Or for extended classification (5 classes):
 
 ```bash
 python Dataset/ecg_preprocessing_pipeline_all5.py
+```
+
+### Multi-Class Classification
+
+To train the multi-class ECG classification model:
+
+```bash
+cd Multi_Class_Classification
+python train.py
+```
+
+To run inference with a trained model:
+
+```bash
+python predict.py --model output/models/best_model.pt --signal path/to/signal.npy
 ```
 
 ### Dataset Analysis
