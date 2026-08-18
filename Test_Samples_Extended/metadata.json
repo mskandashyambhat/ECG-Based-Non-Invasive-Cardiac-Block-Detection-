@@ -1,0 +1,22 @@
+{
+  "description": "Extended ECG test samples with longer duration",
+  "sampling_rate": 500,
+  "classes": {
+    "0": "Normal",
+    "1": "AV Block",
+    "2": "Complete Heart Block",
+    "3": "RBBB",
+    "4": "LBBB"
+  },
+  "durations": {
+    "600pts": "1.2 seconds",
+    "1200pts": "2.4 seconds",
+    "1800pts": "3.6 seconds"
+  },
+  "formats": [
+    "npy (binary)",
+    "csv (comma-separated)",
+    "txt (space-separated)"
+  ],
+  "note": "Signals are created by repeating and adding slight noise to original 300-sample signals"
+}

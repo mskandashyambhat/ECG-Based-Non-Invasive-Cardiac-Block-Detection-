@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ECG — Cardiac Block Detection</title>
+  <meta name="description" content="ML-powered ECG analysis for cardiac block detection. Upload ECG signals in NPZ, NPY, CSV, DAT, TXT, MAT or XLSX format.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+
+  <div class="app">
+
+    <!-- Sidebar / Header strip -->
+    <header class="header">
+      <div class="header-brand">
+        <div class="header-logo" aria-label="ECG pulse icon">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polyline points="1,11 5,11 7,4 9,18 11,8 13,14 15,11 21,11" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="header-title">CardioScan</span>
+      </div>
+      <div class="header-meta">ECG Analysis System &middot; v2.0</div>
+    </header>
+
+    <main class="main">
+
+      <!-- Upload Panel -->
+      <section class="panel upload-panel" id="uploadPanel">
+        <div class="panel-label">INPUT</div>
+        <h1 class="panel-heading">Upload ECG Signal</h1>
+        <p class="panel-subtext">Supported formats: <span class="mono">.npz &nbsp;.npy &nbsp;.csv &nbsp;.dat &nbsp;.txt &nbsp;.mat &nbsp;.xlsx</span></p>
+
+        <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Click or drag to upload ECG file">
+          <div class="drop-zone-inner">
+            <div class="drop-icon">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <path d="M16 4v16M10 10l6-6 6 6" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 22v2a2 2 0 002 2h16a2 2 0 002-2v-2" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="drop-text">Drag &amp; drop or <button class="drop-link" id="dropLink" type="button">browse file</button></p>
+            <p class="drop-hint">Max 50MB per file</p>
+          </div>
+          <input type="file" id="fileInput" accept=".npz,.npy,.csv,.dat,.txt,.xlsx,.mat" hidden aria-hidden="true">
+        </div>
+
+        <div class="file-preview hidden" id="filePreview">
+          <span class="file-preview-name" id="fileName">—</span>
+          <span class="file-preview-size" id="fileSize">—</span>
+        </div>
+      </section>
+
+      <!-- Loading State -->
+      <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-ring" aria-label="Analysing"></div>
+        <p class="loading-text">Analysing ECG signal<span class="loading-dots"></span></p>
+      </div>
+
+      <!-- Results Panel -->
+      <section class="results hidden" id="resultsPanel">
+
+        <!-- ECG Waveform Preview -->
+        <div class="panel waveform-panel">
+          <div class="panel-label">SIGNAL PREVIEW</div>
+          <canvas id="ecgCanvas" class="ecg-canvas" aria-label="ECG waveform preview"></canvas>
+        </div>
+
+        <!-- Diagnosis Banner -->
+        <div class="panel diagnosis-panel" id="diagnosisPanel">
+          <div class="panel-label">PRIMARY DIAGNOSIS</div>
+          <div class="diagnosis-row">
+            <div class="diagnosis-class" id="diagnosisClass">—</div>
+            <div class="diagnosis-badge" id="diagnosisBadge">—</div>
+          </div>
+        </div>
+
+        <!-- ECG Interval Measurements -->
+        <div class="panel metrics-panel">
+          <div class="panel-label">ECG INTERVAL MEASUREMENTS</div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-name">Heart Rate</div>
+              <div class="metric-value mono" id="metricHR">—</div>
+              <div class="metric-unit">bpm</div>
+              <div class="metric-status" id="statusHR">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-name">PR Interval</div>
+              <div class="metric-value mono" id="metricPR">—</div>
+              <div class="metric-unit">ms</div>
+              <div class="metric-status" id="statusPR">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-name">QRS Duration</div>
+              <div class="metric-value mono" id="metricQRS">—</div>
+              <div class="metric-unit">ms</div>
+              <div class="metric-status" id="statusQRS">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-name">QT Interval</div>
+              <div class="metric-value mono" id="metricQT">—</div>
+              <div class="metric-unit">ms</div>
+              <div class="metric-status" id="statusQT">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Classification Results -->
+        <div class="panel classification-panel">
+          <div class="panel-label">CLASSIFICATION</div>
+          <div class="class-row">
+            <div class="class-block">
+              <div class="class-block-label">BINARY SCREENING</div>
+              <div class="class-block-name" id="binaryLabel">—</div>
+            </div>
+            <div class="class-block">
+              <div class="class-block-label">DETAILED TYPE</div>
+              <div class="class-block-name" id="multiclassLabel">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Severity Panel -->
+        <div class="panel severity-panel" id="severityPanel">
+          <div class="panel-label">CLINICAL ASSESSMENT</div>
+          <div class="severity-grid">
+            <div class="severity-row">
+              <span class="severity-key">Status</span>
+              <span class="severity-val" id="severityStatus">—</span>
+            </div>
+            <div class="severity-row">
+              <span class="severity-key">Recommendation</span>
+              <span class="severity-val" id="severityAction">—</span>
+            </div>
+            <div class="severity-row">
+              <span class="severity-key">Follow-up</span>
+              <span class="severity-val" id="severityFollowup">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Row -->
+        <div class="action-row">
+          <button class="btn btn-outline" id="downloadBtn">Download Report</button>
+          <button class="btn btn-ghost" id="newBtn">Analyse Another</button>
+        </div>
+
+      </section>
+
+      <!-- Error Toast -->
+      <div class="toast hidden" id="errorToast" role="alert">
+        <span id="errorText">Error</span>
+        <button class="toast-close" id="toastClose" aria-label="Dismiss">&times;</button>
+      </div>
+
+    </main>
+
+    <footer class="footer">
+      <span>CardioScan &copy; 2026</span>
+      <span class="footer-sep">&middot;</span>
+      <span>ML-Powered Cardiac Block Detection</span>
+      <span class="footer-sep">&middot;</span>
+      <span>For research use only</span>
+    </footer>
+
+  </div>
+
+  <script src="../static/script.js"></script>
+</body>
+</html>

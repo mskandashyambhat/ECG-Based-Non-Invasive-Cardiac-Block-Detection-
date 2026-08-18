@@ -30,7 +30,7 @@ for name, value in vars(cfg).items():
     if not name.startswith('_'):
         globals()[name] = value
 from utils import set_seed, get_device, print_device_info, setup_logger, count_parameters, save_checkpoint, load_checkpoint, clip_gradient, save_results, print_model_summary
-from dataset import ECGDataModule, AugmentationPipeline
+from dataset import ECGDataModule, ECGAugmentationPipeline
 from model import HybridECGModel
 from losses import get_loss_function
 from metrics import MetricsComputer, TrainingMetrics, EarlyStoppingTracker
@@ -101,7 +101,7 @@ class ECGTrainer:
         self.train_loader = self.data_module.get_train_dataloader(
             batch_size=self.cfg['batch_size'],
             num_workers=NUM_WORKERS,
-            weighted_sampling=False
+            weighted_sampling=True
         )
         self.val_loader = self.data_module.get_val_dataloader(
             batch_size=self.cfg['batch_size'],
@@ -128,12 +128,11 @@ class ECGTrainer:
         )
         
         # Learning rate scheduler
-        self.scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+        self.scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(
             self.optimizer,
-            mode='min',
-            factor=REDUCE_LR_FACTOR,
-            patience=REDUCE_LR_PATIENCE,
-            min_lr=REDUCE_LR_MIN
+            T_0=getattr(cfg, 'COSINE_T0', 10),
+            T_mult=getattr(cfg, 'COSINE_T_MULT', 2),
+            eta_min=REDUCE_LR_MIN
         )
         
         # Metrics
@@ -316,11 +315,37 @@ class ECGTrainer:
             
             self.optimizer.zero_grad(set_to_none=True)
             
+            # In-batch ECG augmentation (training only)
+            if self.model.training:
+                with torch.no_grad():
+                    # Random Gaussian noise
+                    noise_mask = torch.rand(signals.size(0)) < 0.5
+                    if noise_mask.any():
+                        signals[noise_mask] += torch.randn_like(signals[noise_mask]) * 0.02
+                    # Random amplitude scaling
+                    amp_mask = torch.rand(signals.size(0)) < 0.3
+                    if amp_mask.any():
+                        scale = 0.85 + 0.3 * torch.rand(amp_mask.sum(), 1, device=signals.device)
+                        signals[amp_mask] = signals[amp_mask] * scale
+            
             # Forward pass
             if self.use_amp:
                 with autocast():
-                    logits, _ = self.model(signals)
-                    loss = self.criterion(logits, labels)
+                    # MixUp augmentation
+                    if USE_MIXUP and self.model.training:
+                        import numpy as np
+                        alpha = getattr(cfg, 'MIXUP_ALPHA', 0.2)
+                        lam = np.random.beta(alpha, alpha) if alpha > 0 else 1.0
+                        batch_size = signals.size(0)
+                        index = torch.randperm(batch_size, device=signals.device)
+                        signals = lam * signals + (1 - lam) * signals[index]
+                        labels_a, labels_b = labels, labels[index]
+                        # Use mixed loss
+                        logits, _ = self.model(signals)
+                        loss = lam * self.criterion(logits, labels_a) + (1 - lam) * self.criterion(logits, labels_b)
+                    else:
+                        logits, _ = self.model(signals)
+                        loss = self.criterion(logits, labels)
                 
                 self.scaler.scale(loss).backward()
                 self.scaler.unscale_(self.optimizer)
@@ -328,8 +353,21 @@ class ECGTrainer:
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
             else:
-                logits, _ = self.model(signals)
-                loss = self.criterion(logits, labels)
+                # MixUp augmentation
+                if USE_MIXUP and self.model.training:
+                    import numpy as np
+                    alpha = getattr(cfg, 'MIXUP_ALPHA', 0.2)
+                    lam = np.random.beta(alpha, alpha) if alpha > 0 else 1.0
+                    batch_size = signals.size(0)
+                    index = torch.randperm(batch_size, device=signals.device)
+                    signals = lam * signals + (1 - lam) * signals[index]
+                    labels_a, labels_b = labels, labels[index]
+                    # Use mixed loss
+                    logits, _ = self.model(signals)
+                    loss = lam * self.criterion(logits, labels_a) + (1 - lam) * self.criterion(logits, labels_b)
+                else:
+                    logits, _ = self.model(signals)
+                    loss = self.criterion(logits, labels)
                 loss.backward()
                 clip_gradient(self.model, GRADIENT_CLIP)
                 self.optimizer.step()

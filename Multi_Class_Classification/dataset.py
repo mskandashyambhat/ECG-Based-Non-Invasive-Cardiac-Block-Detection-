@@ -10,6 +10,55 @@ from sklearn.model_selection import train_test_split
 from typing import Tuple, Optional, Dict
 import logging
 
+class ECGAugmentationPipeline:
+    """
+    Comprehensive ECG signal augmentation pipeline for training.
+    Applies random transformations to improve model generalization.
+    """
+    
+    def __init__(self, noise_std_range=(0.01, 0.03), amplitude_range=(0.85, 1.15),
+                 shift_range=15, wander_amplitude_range=(0.02, 0.1),
+                 noise_prob=0.6, amplitude_prob=0.4, shift_prob=0.4, wander_prob=0.3):
+        self.noise_std_range = noise_std_range
+        self.amplitude_range = amplitude_range
+        self.shift_range = shift_range
+        self.wander_amplitude_range = wander_amplitude_range
+        self.noise_prob = noise_prob
+        self.amplitude_prob = amplitude_prob
+        self.shift_prob = shift_prob
+        self.wander_prob = wander_prob
+    
+    def __call__(self, signal: torch.Tensor) -> torch.Tensor:
+        """Apply augmentation pipeline to a single ECG signal tensor."""
+        import random
+        signal = signal.clone()
+        
+        # Gaussian noise
+        if random.random() < self.noise_prob:
+            std = random.uniform(*self.noise_std_range)
+            signal = signal + torch.randn_like(signal) * std
+        
+        # Amplitude scaling
+        if random.random() < self.amplitude_prob:
+            scale = random.uniform(*self.amplitude_range)
+            signal = signal * scale
+        
+        # Time shift (circular roll)
+        if random.random() < self.shift_prob:
+            shift = random.randint(-self.shift_range, self.shift_range)
+            signal = torch.roll(signal, shift)
+        
+        # Baseline wander (low-freq sine drift)
+        if random.random() < self.wander_prob:
+            length = signal.shape[-1]
+            freq = random.uniform(0.5, 2.0)  # Hz equivalent in normalized frequency
+            amp = random.uniform(*self.wander_amplitude_range)
+            t = torch.linspace(0, 2 * 3.14159 * freq, length)
+            wander = amp * torch.sin(t)
+            signal = signal + wander
+        
+        return signal
+
 logger = logging.getLogger(__name__)
 
 
@@ -199,6 +248,8 @@ class ECGDataModule:
     def get_train_dataloader(self, batch_size: int = 64, num_workers: int = 4,
                             weighted_sampling: bool = False, transform=None) -> DataLoader:
         """Get training dataloader."""
+        if transform is None:
+            transform = ECGAugmentationPipeline()
         dataset = ECGDataset(self.X_train, self.y_train, transform=transform)
         
         if weighted_sampling:
@@ -276,67 +327,4 @@ class ECGDataModule:
         return weights
 
 
-class SignalAugmentation:
-    """Data augmentation transforms for ECG signals."""
-    
-    @staticmethod
-    def gaussian_noise(signal: torch.Tensor, std: float = 0.01) -> torch.Tensor:
-        """Add Gaussian noise."""
-        noise = torch.randn_like(signal) * std
-        return signal + noise
-    
-    @staticmethod
-    def time_stretch(signal: torch.Tensor, rate: float = 0.1) -> torch.Tensor:
-        """Time stretching augmentation."""
-        if np.random.rand() < rate:
-            factor = np.random.uniform(0.9, 1.1)
-            signal = torch.nn.functional.interpolate(
-                signal.unsqueeze(0).unsqueeze(0),
-                scale_factor=factor,
-                mode='linear',
-                align_corners=False
-            ).squeeze()
-        return signal
-    
-    @staticmethod
-    def amplitude_scaling(signal: torch.Tensor, factor: float = 0.15) -> torch.Tensor:
-        """Random amplitude scaling."""
-        scale = np.random.uniform(1 - factor, 1 + factor)
-        return signal * scale
-    
-    @staticmethod
-    def cutout(signal: torch.Tensor, max_length: int = 50) -> torch.Tensor:
-        """Cutout augmentation for time series."""
-        length = signal.shape[0]
-        cut_len = np.random.randint(1, max_length + 1)
-        start = np.random.randint(0, length - cut_len)
-        signal[start:start + cut_len] = 0
-        return signal
 
-
-class AugmentationPipeline:
-    """Pipeline for data augmentation."""
-    
-    def __init__(self, augmentation_config: Optional[Dict] = None):
-        """
-        Args:
-            augmentation_config: Dictionary of augmentation configurations
-        """
-        self.config = augmentation_config or {}
-        self.augmentation = SignalAugmentation()
-    
-    def __call__(self, signal: torch.Tensor) -> torch.Tensor:
-        """Apply augmentations."""
-        if self.config.get('gaussian_noise', False):
-            signal = self.augmentation.gaussian_noise(signal, self.config.get('noise_std', 0.01))
-        
-        if self.config.get('time_stretch', False):
-            signal = self.augmentation.time_stretch(signal, self.config.get('stretch_rate', 0.1))
-        
-        if self.config.get('amplitude_scaling', False):
-            signal = self.augmentation.amplitude_scaling(signal, self.config.get('scale_factor', 0.15))
-        
-        if self.config.get('cutout', False):
-            signal = self.augmentation.cutout(signal, self.config.get('cutout_max_len', 50))
-        
-        return signal

@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+.DS_Store
+.git
+.gitignore
+.venv
+Test_Samples
+Test_Samples_Extended
+Dataset/Unprocessed_Datasets
+uploads
+*.log

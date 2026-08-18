@@ -5,10 +5,11 @@ Includes ResNet1D backbone, BiLSTM, and Multi-Head Attention layers.
 
 import torch
 import torch.nn as nn
+import math
 import torch.nn.functional as F
 from typing import Optional, Tuple, Dict, List
 
-from attention import MultiHeadSelfAttention, TemporalAttention, AttentionBlock
+from .attention import MultiHeadSelfAttention, TemporalAttention, AttentionBlock
 
 
 class ResidualBlock1D(nn.Module):
@@ -37,6 +38,13 @@ class ResidualBlock1D(nn.Module):
         self.conv2 = nn.Conv1d(out_channels, out_channels, kernel_size, 1, padding, bias=False)
         self.bn2 = nn.BatchNorm1d(out_channels)
         
+        # Squeeze-and-Excitation block
+        se_reduction = max(1, out_channels // 8)
+        self.se_avg = nn.AdaptiveAvgPool1d(1)
+        self.se_fc1 = nn.Linear(out_channels, se_reduction, bias=False)
+        self.se_fc2 = nn.Linear(se_reduction, out_channels, bias=False)
+        self.se_sigmoid = nn.Sigmoid()
+        
         # Skip connection
         self.skip = nn.Sequential()
         if stride != 1 or in_channels != out_channels:
@@ -62,6 +70,12 @@ class ResidualBlock1D(nn.Module):
         
         out = self.conv2(out)
         out = self.bn2(out)
+        
+        # SE channel recalibration
+        se = self.se_avg(out).squeeze(-1)  # [B, C]
+        se = F.relu(self.se_fc1(se))
+        se = self.se_sigmoid(self.se_fc2(se)).unsqueeze(-1)  # [B, C, 1]
+        out = out * se
         
         out = out + residual
         out = self.relu(out)
@@ -204,6 +218,14 @@ class HybridECGModel(nn.Module):
             bidirectional=True
         )
         
+        # Sinusoidal positional encoding for BiLSTM input
+        pe = torch.zeros(1, self.resnet_output_length + 10, self.resnet_output_channels)
+        position = torch.arange(0, self.resnet_output_length + 10, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, self.resnet_output_channels, 2).float() * (-math.log(10000.0) / self.resnet_output_channels))
+        pe[0, :, 0::2] = torch.sin(position * div_term)
+        pe[0, :, 1::2] = torch.cos(position * div_term[:self.resnet_output_channels // 2])
+        self.register_buffer('pos_encoding', pe)
+        
         # After BiLSTM, we have bidirectional output
         self.lstm_output_dim = lstm_hidden_dim * 2
         
@@ -213,6 +235,7 @@ class HybridECGModel(nn.Module):
             num_heads=num_attention_heads,
             dropout=dropout
         )
+        self.pre_attn_norm = nn.LayerNorm(self.lstm_output_dim)
         
         # ===== Global Pooling =====
         self.global_avg_pool = nn.AdaptiveAvgPool1d(1)
@@ -269,11 +292,16 @@ class HybridECGModel(nn.Module):
         # Transpose for LSTM: [batch_size, 512, 37] -> [batch_size, 37, 512]
         lstm_input = resnet_features.transpose(1, 2)
         
+        # Add positional encoding
+        seq_len = lstm_input.size(1)
+        lstm_input = lstm_input + self.pos_encoding[:, :seq_len, :]
+        
         # ===== BiLSTM =====
         # [batch_size, 37, 512] -> [batch_size, 37, 512]
         lstm_out, (h_n, c_n) = self.bilstm(lstm_input)
         
         # ===== Multi-Head Attention =====
+        lstm_out = self.pre_attn_norm(lstm_out)
         # [batch_size, 37, 512] -> [batch_size, 37, 512]
         attn_out, attention_weights = self.attention(lstm_out)
         

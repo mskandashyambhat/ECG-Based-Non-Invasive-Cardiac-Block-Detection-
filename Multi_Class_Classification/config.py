@@ -21,7 +21,7 @@ LEARNING_RATE = 1e-3
 # Output directories
 
 # Fast training controls
-MAX_TRAIN_SAMPLES = 120000
+MAX_TRAIN_SAMPLES = 300000
 OUTPUT_DIR = Path(__file__).parent / "output"
 MODELS_DIR = OUTPUT_DIR / "models"
 RESULTS_DIR = OUTPUT_DIR / "results"
@@ -93,15 +93,17 @@ DROPOUT_RATES = [0.3, 0.25, 0.2]
 # TRAINING CONFIGURATION
 # ============================================================================
 BATCH_SIZE = 128  # ✅ BALANCED: 3M samples ÷ 128 = ~12K batches/epoch (much better)
-NUM_EPOCHS = 5  # ✅ MINIMAL: Only 5 epochs with early stopping patience 2
+NUM_EPOCHS = 40  # ✅ MINIMAL: Only 5 epochs with early stopping patience 2
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY = 1e-5
-GRADIENT_CLIP = 1.0
+GRADIENT_CLIP = 0.5
 
 # Optimization
 OPTIMIZER = "adamw"  # adamw, adam, sgd
-SCHEDULER = "plateau"  # plateau, cosine, step, exponential
-WARMUP_EPOCHS = 1
+SCHEDULER = "cosine_warm_restarts"  # plateau, cosine, step, exponential
+COSINE_T0 = 10  # epochs for first cosine restart
+COSINE_T_MULT = 2  # multiplier for subsequent periods
+WARMUP_EPOCHS = 3
 
 # Mixed Precision Training
 USE_AMP = True
@@ -113,7 +115,7 @@ SCALER_GROWTH_INTERVAL = 2000
 # ============================================================================
 # LOSS CONFIGURATION
 # ============================================================================
-LOSS_TYPE = "cross_entropy"  # cross_entropy, focal
+LOSS_TYPE = "focal"  # cross_entropy, focal
 FOCAL_ALPHA = 0.25
 FOCAL_GAMMA = 2.0
 LABEL_SMOOTHING = 0.1
@@ -136,19 +138,25 @@ L2_WEIGHT_DECAY = 1e-5
 # ============================================================================
 # EARLY STOPPING & LR SCHEDULING
 # ============================================================================
-EARLY_STOP_PATIENCE = 3
+EARLY_STOP_PATIENCE = 8
 EARLY_STOP_METRIC = "val_loss"  # val_loss, val_accuracy
 EARLY_STOP_MIN_DELTA = 1e-4
 
 # ReduceLROnPlateau
-REDUCE_LR_PATIENCE = 1
+REDUCE_LR_PATIENCE = 3
 REDUCE_LR_FACTOR = 0.5
 REDUCE_LR_MIN = 1e-7
 
 # ============================================================================
 # DEVICE CONFIGURATION
 # ============================================================================
-DEVICE = "cpu"  # ✅ Use CPU (stable, still ~3-4 hours for 20 epochs)
+# Check if MPS is available for Mac, otherwise fallback to CPU
+try:
+    import torch
+    DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
+except Exception:
+    DEVICE = "cpu"
+
 NUM_WORKERS = 0  # ✅ No multiprocessing on CPU - dataloader construction is causing hangs
 PIN_MEMORY = False  # Not needed on Mac
 PREFETCH_FACTOR = 1  # Reduced for 16GB RAM

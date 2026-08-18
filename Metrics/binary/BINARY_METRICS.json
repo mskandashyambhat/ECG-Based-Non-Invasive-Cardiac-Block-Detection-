@@ -1,0 +1,136 @@
+{
+  "phase": "Phase 1 - Binary Classification",
+  "timestamp": "2026-08-02",
+  "models_compared": 2,
+  "models": {
+    "1D_CNN_Advanced": {
+      "model_name": "1D CNN (Advanced)",
+      "architecture": {
+        "type": "Convolutional Neural Network",
+        "blocks": 4,
+        "input_shape": [300, 1],
+        "output_classes": 2
+      },
+      "performance": {
+        "test_accuracy": 0.8693,
+        "test_accuracy_percentage": "86.93%",
+        "test_loss": 0.2902,
+        "precision": 0.8738,
+        "recall": 0.8693,
+        "f1_score": 0.8689,
+        "roc_auc": 0.9422,
+        "total_parameters": 43585,
+        "parameters_millions": 0.0436
+      },
+      "confusion_matrix": {
+        "true_negatives": 46216,
+        "false_positives": 3784,
+        "false_negatives": 9290,
+        "true_positives": 40710,
+        "specificity": 0.924,
+        "sensitivity": 0.815,
+        "format": "[[TN, FP], [FN, TP]]"
+      },
+      "per_class_metrics": {
+        "class_0_no_block": {
+          "name": "No Block (Healthy)",
+          "precision": 0.8520,
+          "recall": 0.8495,
+          "f1_score": 0.8507,
+          "support": "49,550 samples"
+        },
+        "class_1_block_present": {
+          "name": "Block Present",
+          "precision": 0.8499,
+          "recall": 0.8527,
+          "f1_score": 0.8513,
+          "support": "50,000 samples"
+        }
+      },
+      "status": "✅ BEST BASELINE MODEL",
+      "recommendation": "Use this model as production baseline for binary classification"
+    },
+    "BiLSTM_GRU_Advanced": {
+      "model_name": "Bidirectional GRU (Advanced)",
+      "architecture": {
+        "type": "Recurrent Neural Network",
+        "layer_type": "GRU",
+        "bidirectional": true,
+        "input_shape": [300],
+        "output_classes": 2
+      },
+      "performance": {
+        "test_accuracy": 0.6398,
+        "test_accuracy_percentage": "63.98%",
+        "test_loss": 0.6313,
+        "precision": 0.6445,
+        "recall": 0.6398,
+        "f1_score": 0.6368,
+        "roc_auc": 0.6957,
+        "total_parameters": 23361,
+        "parameters_millions": 0.0234
+      },
+      "confusion_matrix": {
+        "true_negatives": 27485,
+        "false_positives": 22515,
+        "false_negatives": 13507,
+        "true_positives": 36493,
+        "specificity": 0.549,
+        "sensitivity": 0.730,
+        "format": "[[TN, FP], [FN, TP]]"
+      },
+      "per_class_metrics": {
+        "class_0_no_block": {
+          "name": "No Block (Healthy)",
+          "precision": "Not separately reported",
+          "recall": "Part of overall recall",
+          "f1_score": "Weighted to overall F1"
+        },
+        "class_1_block_present": {
+          "name": "Block Present",
+          "precision": "Not separately reported",
+          "recall": "Part of overall recall",
+          "f1_score": "Weighted to overall F1"
+        }
+      },
+      "status": "⚠️  UNDERPERFORMER",
+      "recommendation": "Not recommended - 1D CNN superior in all metrics"
+    }
+  },
+  "comparative_analysis": {
+    "best_model": "1D_CNN_Advanced",
+    "accuracy_difference": "22.95% (1D CNN better)",
+    "roc_auc_difference": "24.65% (1D CNN better)",
+    "parameters_ratio": "1.86x (1D CNN has more)",
+    "conclusion": "1D CNN significantly outperforms GRU across all metrics"
+  },
+  "dataset_characteristics": {
+    "total_samples": "~100,000",
+    "classes": 2,
+    "class_names": ["No Block (Normal)", "Block Present"],
+    "input_shape": [300],
+    "sampling_rate_hz": 500,
+    "signal_duration_seconds": 0.6,
+    "ecg_lead": "Lead II",
+    "preprocessing_applied": [
+      "Bandpass filtering",
+      "Notch filtering",
+      "R-peak detection",
+      "Segmentation",
+      "Z-score normalization"
+    ]
+  },
+  "recommendations_phase_2": {
+    "for_1d_cnn": [
+      "Explore ensemble methods combining with attention",
+      "Test on external validation set",
+      "Deploy as production baseline",
+      "Monitor performance on real patient data"
+    ],
+    "general": [
+      "Use 1D CNN as binary baseline",
+      "Archive GRU results for comparison",
+      "Prepare for multi-class transition"
+    ]
+  }
+}
