@@ -657,11 +657,22 @@ if __name__ == '__main__':
         logger.warning("  Inference may not work correctly")
     logger.info("═" * 60)
     
-    # Railway uses PORT environment variable, fallback to 5000 for local
-    port = int(os.environ.get('PORT', 5000))
-    host = '0.0.0.0' if port != 5000 else '127.0.0.1'
+    # Railway uses PORT environment variable, fallback to 8080 for local
+    port = int(os.environ.get('PORT', 8080))
+    host = '0.0.0.0'
     
-    logger.info(f"Server: http://{host}:{port}")
+    # Get local IP for network access display
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except:
+        local_ip = "YOUR_LOCAL_IP"
+    
+    logger.info(f"Server: http://127.0.0.1:{port}")
+    logger.info(f"Network: http://{local_ip}:{port}")
     logger.info("Supported formats: " + ", ".join(ALLOWED_EXTENSIONS))
     logger.info("═" * 60)
 
