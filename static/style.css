@@ -118,6 +118,7 @@ button { cursor: pointer; font-family: var(--f-sans); }
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
   background: var(--c-surface-1);
+  color: var(--c-text-primary);
 }
 
 .header-title {
@@ -260,6 +261,7 @@ button { cursor: pointer; font-family: var(--f-sans); }
   opacity: 0.4;
   transition: opacity var(--t-normal);
   pointer-events: none;
+  color: var(--c-text-secondary);
 }
 .drop-zone:hover .drop-icon { opacity: 0.7; }
 
