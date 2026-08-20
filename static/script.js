@@ -510,6 +510,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Show the panel regardless
     panel.classList.remove('hidden');
     
+    // Get diagnosis to provide context-specific description
+    const diagnosis = document.getElementById('diagnosisClass')?.textContent || '';
+    const subtext = document.getElementById('attentionSubtext');
+    
+    if (subtext) {
+      let description = '';
+      if (diagnosis.includes('AV Block') || diagnosis.includes('CHB')) {
+        description = 'Model focused on PR intervals and P-QRS relationships to detect atrioventricular conduction delays and dropped beats';
+      } else if (diagnosis.includes('LBBB')) {
+        description = 'Model concentrated on QRS complex morphology in lateral leads (V5-V6, I, aVL) to identify left bundle branch delay patterns';
+      } else if (diagnosis.includes('RBBB')) {
+        description = 'Model examined QRS patterns in right precordial leads (V1-V2) looking for rsR\' configuration indicating right bundle delay';
+      } else if (diagnosis.includes('PAC')) {
+        description = 'Model attended to P wave timing and morphology to detect premature atrial contractions occurring earlier than expected';
+      } else if (diagnosis.includes('PVC')) {
+        description = 'Model identified wide QRS complexes without preceding P waves and subsequent compensatory pauses characteristic of PVCs';
+      } else if (diagnosis.includes('STD')) {
+        description = 'Model analyzed ST segment depressions across multiple leads to assess for myocardial ischemia or subendocardial injury';
+      } else if (diagnosis.includes('STE')) {
+        description = 'Model detected ST segment elevations indicating acute transmural myocardial injury, typically seen in acute MI';
+      } else {
+        description = 'Highlights which temporal segments of the ECG waveform received the highest neural attention during classification';
+      }
+      subtext.textContent = description;
+    }
+    
     const canvas = document.getElementById('attentionCanvas');
     if (canvas) renderAttentionHeatmap(attentionData, canvas);
     
@@ -592,6 +618,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!panel) return;
     
     panel.classList.remove('hidden');
+    
+    // Get diagnosis to provide context-specific description
+    const diagnosis = document.getElementById('diagnosisClass')?.textContent || '';
+    const subtext = document.getElementById('importanceSubtext');
+    
+    if (subtext) {
+      let description = '';
+      if (diagnosis.includes('AV Block') || diagnosis.includes('CHB')) {
+        description = 'Shows which parts of the ECG contributed to detecting AV conduction delay patterns (PR prolongation, dropped beats)';
+      } else if (diagnosis.includes('LBBB')) {
+        description = 'Highlights QRS complex regions that revealed left bundle branch delay patterns (wide QRS, notched R waves)';
+      } else if (diagnosis.includes('RBBB')) {
+        description = 'Identifies QRS features indicating right bundle branch delay (rsR\' pattern in V1, wide S waves in lateral leads)';
+      } else if (diagnosis.includes('PAC')) {
+        description = 'Points to premature P wave morphology and timing that indicated early atrial contractions';
+      } else if (diagnosis.includes('PVC')) {
+        description = 'Reveals wide QRS complexes and compensatory pauses that signaled premature ventricular contractions';
+      } else if (diagnosis.includes('STD')) {
+        description = 'Shows ST segment regions where depression patterns suggested myocardial ischemia or strain';
+      } else if (diagnosis.includes('STE')) {
+        description = 'Highlights ST segment elevation zones indicating acute myocardial injury or infarction';
+      } else {
+        description = 'Indicates which temporal regions of the ECG signal most strongly influenced the model\'s diagnostic decision';
+      }
+      subtext.textContent = description;
+    }
+    
     const canvas = document.getElementById('importanceCanvas');
     if (canvas) renderFeatureImportance(importance, canvas);
   }

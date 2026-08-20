@@ -77,7 +77,7 @@
         </div>
 
         <!-- 12-Lead ECG Display -->
-        <div class="panel 12lead-panel">
+        <div class="panel lead-panel-12">
           <div class="panel-label">12-LEAD ECG</div>
           <p class="panel-subtext">Standard 12-lead configuration with all electrode views</p>
           <div class="leads-grid">
@@ -214,7 +214,7 @@
         <!-- Attention Heatmap Panel -->
         <div class="panel attention-panel hidden" id="attentionPanel">
           <div class="panel-label">MODEL ATTENTION HEATMAP</div>
-          <p class="panel-subtext">Which regions of the ECG signal the model focused on for diagnosis</p>
+          <p class="panel-subtext" id="attentionSubtext">Which regions of the ECG signal the model focused on for diagnosis</p>
           <canvas id="attentionCanvas" class="attention-canvas" aria-label="Attention heatmap"></canvas>
           <div class="attention-regions" id="attentionRegions">
             <div class="attention-region">
@@ -227,7 +227,7 @@
         <!-- Feature Importance Panel -->
         <div class="panel importance-panel hidden" id="importancePanel">
           <div class="panel-label">FEATURE IMPORTANCE</div>
-          <p class="panel-subtext">Which signal regions influenced the prediction the most</p>
+          <p class="panel-subtext" id="importanceSubtext">Which signal regions influenced the prediction the most</p>
           <canvas id="importanceCanvas" class="importance-canvas" aria-label="Feature importance chart"></canvas>
         </div>
 

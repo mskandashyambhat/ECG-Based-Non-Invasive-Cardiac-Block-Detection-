@@ -181,9 +181,6 @@ button { cursor: pointer; font-family: var(--f-sans); }
   border-color: var(--c-text-primary);
   box-shadow: 0 0 8px var(--c-border-hover);
 }
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 
 /* --- Main --- */
 .main {
@@ -382,7 +379,7 @@ button { cursor: pointer; font-family: var(--f-sans); }
 }
 
 /* --- 12-Lead ECG Panel --- */
-.12lead-panel {
+.lead-panel-12 {
   padding: var(--sp-6);
 }
 
