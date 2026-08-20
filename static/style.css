@@ -82,7 +82,7 @@ button { cursor: pointer; font-family: var(--f-sans); }
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  max-width: 1400px;
+  max-width: 840px;
   margin: 0 auto;
   padding: 0 var(--sp-5);
 }
@@ -188,14 +188,10 @@ button { cursor: pointer; font-family: var(--f-sans); }
 /* --- Main --- */
 .main {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: var(--sp-5);
-  padding-bottom: var(--sp-5);
-}
-
-.main > .panel:first-child {
-  grid-column: 1 / -1;
+  padding-bottom: var(--sp-7);
 }
 
 /* --- Panel --- */
@@ -788,12 +784,6 @@ button { cursor: pointer; font-family: var(--f-sans); }
 .hidden { display: none !important; }
 
 /* --- Responsive --- */
-@media (max-width: 1200px) {
-  .main {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 640px) {
   .app { padding: 0 var(--sp-4); }
   .panel { padding: var(--sp-4); }
