@@ -16,15 +16,21 @@
 
     <!-- Sidebar / Header strip -->
     <header class="header">
-      <div class="header-brand">
-        <div class="header-logo" aria-label="ECG pulse icon">
+      <div class="header-left">
+        
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
             <polyline points="1,11 5,11 7,4 9,18 11,8 13,14 15,11 21,11" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <span class="header-title">CardioScan</span>
       </div>
-      <div class="header-meta">ECG Analysis System &middot; v2.0</div>
+      <div class="header-right">
+        <div class="header-meta">ECG Analysis System · v2.0</div>
+        <label class="theme-switch-label">
+          <input type="checkbox" id="themeToggle" class="theme-switch-checkbox">
+          <span class="theme-switch-slider"></span>
+        </label>
+      </div>
     </header>
 
     <main class="main">
@@ -70,7 +76,67 @@
           <canvas id="ecgCanvas" class="ecg-canvas" aria-label="ECG waveform preview"></canvas>
         </div>
 
-        <!-- Diagnosis Banner -->
+        <!-- 12-Lead ECG Display -->
+        <div class="panel 12lead-panel">
+          <div class="panel-label">12-LEAD ECG</div>
+          <p class="panel-subtext">Standard 12-lead configuration with all electrode views</p>
+          <div class="leads-grid">
+            <div class="lead-row">
+              <div class="lead-item">
+                <div class="lead-title">I</div>
+                <canvas id="leadI" class="lead-canvas" aria-label="Lead I"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">II</div>
+                <canvas id="leadII" class="lead-canvas" aria-label="Lead II"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">III</div>
+                <canvas id="leadIII" class="lead-canvas" aria-label="Lead III"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">aVR</div>
+                <canvas id="leadAVR" class="lead-canvas" aria-label="Lead aVR"></canvas>
+              </div>
+            </div>
+            <div class="lead-row">
+              <div class="lead-item">
+                <div class="lead-title">aVL</div>
+                <canvas id="leadAVL" class="lead-canvas" aria-label="Lead aVL"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">aVF</div>
+                <canvas id="leadAVF" class="lead-canvas" aria-label="Lead aVF"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">V1</div>
+                <canvas id="leadV1" class="lead-canvas" aria-label="Lead V1"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">V2</div>
+                <canvas id="leadV2" class="lead-canvas" aria-label="Lead V2"></canvas>
+              </div>
+            </div>
+            <div class="lead-row">
+              <div class="lead-item">
+                <div class="lead-title">V3</div>
+                <canvas id="leadV3" class="lead-canvas" aria-label="Lead V3"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">V4</div>
+                <canvas id="leadV4" class="lead-canvas" aria-label="Lead V4"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">V5</div>
+                <canvas id="leadV5" class="lead-canvas" aria-label="Lead V5"></canvas>
+              </div>
+              <div class="lead-item">
+                <div class="lead-title">V6</div>
+                <canvas id="leadV6" class="lead-canvas" aria-label="Lead V6"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="panel diagnosis-panel" id="diagnosisPanel">
           <div class="panel-label">PRIMARY DIAGNOSIS</div>
           <div class="diagnosis-row">
@@ -109,8 +175,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Classification Results -->
         <div class="panel classification-panel">
           <div class="panel-label">CLASSIFICATION</div>
           <div class="class-row">
@@ -123,6 +187,48 @@
               <div class="class-block-name" id="multiclassLabel">—</div>
             </div>
           </div>
+        </div>
+
+        <!-- Waveform Annotations Panel -->
+        <div class="panel waveform-annotations-panel hidden" id="waveformsPanel">
+          <div class="panel-label">WAVEFORM ANALYSIS</div>
+          <div class="waveform-markers">
+            <div class="marker-item">
+              <span class="marker-dot qrs"></span>
+              <span class="marker-label">QRS Complex</span>
+              <span class="marker-count" id="qrsCount">0</span>
+            </div>
+            <div class="marker-item">
+              <span class="marker-dot pwave"></span>
+              <span class="marker-label">P-Wave</span>
+              <span class="marker-count" id="pCount">0</span>
+            </div>
+            <div class="marker-item">
+              <span class="marker-dot twave"></span>
+              <span class="marker-label">T-Wave</span>
+              <span class="marker-count" id="tCount">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attention Heatmap Panel -->
+        <div class="panel attention-panel hidden" id="attentionPanel">
+          <div class="panel-label">MODEL ATTENTION HEATMAP</div>
+          <p class="panel-subtext">Which regions of the ECG signal the model focused on for diagnosis</p>
+          <canvas id="attentionCanvas" class="attention-canvas" aria-label="Attention heatmap"></canvas>
+          <div class="attention-regions" id="attentionRegions">
+            <div class="attention-region">
+              <span class="region-label">Top Attention Regions:</span>
+              <span class="region-values" id="attentionValues">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature Importance Panel -->
+        <div class="panel importance-panel hidden" id="importancePanel">
+          <div class="panel-label">FEATURE IMPORTANCE</div>
+          <p class="panel-subtext">Which signal regions influenced the prediction the most</p>
+          <canvas id="importanceCanvas" class="importance-canvas" aria-label="Feature importance chart"></canvas>
         </div>
 
         <!-- Severity Panel -->
@@ -146,11 +252,59 @@
 
         <!-- Action Row -->
         <div class="action-row">
-          <button class="btn btn-outline" id="downloadBtn">Download Report</button>
-          <button class="btn btn-ghost" id="newBtn">Analyse Another</button>
+          <button class="btn btn-primary" id="downloadBtn">Download PDF Report</button>
+          <button class="btn btn-outline" id="newBtn">Analyse Another</button>
         </div>
 
       </section>
+
+      <!-- Patient Info Modal (appears when download is clicked) -->
+      <div class="modal hidden" id="patientModal">
+        <div class="modal-backdrop" id="modalBackdrop"></div>
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <h2>Patient Information for Report</h2>
+            <button class="modal-close" id="modalClose">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="patientName">Patient Name *</label>
+                <input type="text" id="patientName" placeholder="Enter patient name" required>
+              </div>
+              <div class="form-group">
+                <label for="patientID">Patient ID</label>
+                <input type="text" id="patientID" placeholder="Enter patient ID">
+              </div>
+              <div class="form-group">
+                <label for="patientAge">Age *</label>
+                <input type="number" id="patientAge" placeholder="Age" min="0" max="150" required>
+              </div>
+              <div class="form-group">
+                <label for="patientSex">Sex</label>
+                <select id="patientSex">
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="doctorName">Referring Doctor *</label>
+                <input type="text" id="doctorName" placeholder="Enter doctor name" required>
+              </div>
+              <div class="form-group">
+                <label for="indication">Indication for ECG</label>
+                <input type="text" id="indication" placeholder="e.g., Routine Checkup" value="Routine Checkup">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" id="modalCancel">Cancel</button>
+            <button class="btn btn-primary" id="modalConfirm">Generate Report</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Error Toast -->
       <div class="toast hidden" id="errorToast" role="alert">

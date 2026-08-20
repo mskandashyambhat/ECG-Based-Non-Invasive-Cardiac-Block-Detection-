@@ -17,6 +17,7 @@ import json
 # Import inference engine
 from inference_engine import create_engine
 from ecg_metrics import ECGMetrics
+from report_generator import ECGReportGenerator
 
 # ============================================================================
 # SETUP
@@ -205,9 +206,113 @@ def predict():
         # ---- Inference ----
         report = engine.predict(signal)
         logger.info(f"✓ Inference complete. Keys: {list(report.keys())}")
+        
+        # ---- Advanced Analysis ----
+        try:
+            from ecg_analysis import ECGWaveformDetector, analyze_ecg_comprehensive
+            detector = ECGWaveformDetector(sampling_rate=500)
+            waveforms = detector.get_all_annotations(signal)
+            
+            report['waveforms'] = waveforms
+            logger.info(f"✓ Waveform detection complete: QRS={len(waveforms.get('qrs', []))}")
+            
+            # Try attention if model available
+            if engine.multiclass_predictor.pytorch_model is not None:
+                try:
+                    import torch
+                    from ecg_analysis import AttentionExtractor, ECGExplainer
+                    
+                    signal_tensor = torch.from_numpy(signal).unsqueeze(0).unsqueeze(0).float()
+                    signal_tensor.requires_grad = True
+                    
+                    # Try to get attention weights
+                    try:
+                        attention = AttentionExtractor.get_attention_weights(
+                            engine.multiclass_predictor.pytorch_model, 
+                            signal_tensor
+                        )
+                    except:
+                        attention = None
+                    
+                    # If attention extraction fails, use gradient-based method
+                    if attention is None:
+                        try:
+                            model = engine.multiclass_predictor.pytorch_model
+                            model.eval()
+                            
+                            with torch.enable_grad():
+                                logits, _ = model(signal_tensor)
+                                pred_class = logits.argmax(dim=1)
+                                loss = logits[0, pred_class[0]]
+                                loss.backward()
+                            
+                            # Use gradients as attention
+                            grads = signal_tensor.grad.abs().squeeze().numpy()
+                            attention = (grads - grads.min()) / (grads.max() - grads.min() + 1e-8)
+                        except Exception as grad_e:
+                            logger.warning(f"Gradient-based attention failed: {grad_e}")
+                            attention = None
+                    
+                    report['attention'] = attention.tolist() if attention is not None else None
+                    
+                    # Get top attention regions
+                    try:
+                        top_regions = AttentionExtractor.get_top_attention_regions(attention) if attention is not None else []
+                    except:
+                        # If extraction fails, generate simple regions
+                        if attention is not None:
+                            att_array = np.array(attention) if not isinstance(attention, np.ndarray) else attention
+                            max_att = np.max(att_array)
+                            top_indices = np.argsort(att_array)[-3:][::-1]  # Top 3
+                            top_regions = [{'index': int(i), 'percentage': float(att_array[i] / max_att * 100)} for i in top_indices]
+                        else:
+                            top_regions = []
+                    
+                    report['attention_regions'] = top_regions
+                    
+                    # Feature importance
+                    explainer = ECGExplainer()
+                    try:
+                        importance = explainer.get_feature_importance(signal[:300], engine.multiclass_predictor.pytorch_model, signal_length=300)
+                        report['feature_importance'] = importance
+                    except Exception as imp_e:
+                        logger.warning(f"Feature importance failed: {imp_e}")
+                        report['feature_importance'] = None
+                    
+                    logger.info("✓ Attention & importance extraction complete")
+                except Exception as e:
+                    logger.warning(f"Attention extraction failed: {e}", exc_info=True)
+                    report['attention'] = None
+                    report['attention_regions'] = []
+                    report['feature_importance'] = None
+            else:
+                report['attention'] = None
+                report['attention_regions'] = []
+                report['feature_importance'] = None
+                
+        except Exception as e:
+            logger.error(f"Advanced analysis error: {e}", exc_info=True)
+            report['waveforms'] = {}
+            report['attention'] = None
+            report['attention_regions'] = []
+            report['feature_importance'] = None
 
         # ---- Timestamp ----
         report['timestamp'] = datetime.now().isoformat()
+
+        # ---- 12-Lead ECG Generation ----
+        try:
+            from ecg_12lead import generate_12lead_visualization_data
+            leads_data = generate_12lead_visualization_data(signal, sampling_rate=500)
+            report['leads_12'] = leads_data['leads_display']
+            report['leads_full'] = leads_data['leads']
+            report['lead_names'] = leads_data['lead_names']
+            report['lead_order'] = leads_data['lead_order']
+            logger.info(f"✓ 12-lead ECG generated successfully")
+        except Exception as e:
+            logger.error(f"Could not generate 12-lead ECG: {e}", exc_info=True)
+            report['leads_12'] = {}
+            report['leads_full'] = {}
 
         # ---- ECG Metrics ----
         # Get the diagnosis from multi-class prediction
@@ -217,6 +322,11 @@ def predict():
         try:
             metrics = metrics_calc.get_all_metrics(signal, diagnosis=multiclass_diagnosis)
             metrics_status = metrics_calc.get_metrics_status(metrics, diagnosis=multiclass_diagnosis)
+            
+            # Calculate axes
+            axes = metrics_calc.calculate_cardiac_axes(signal, report.get('waveforms', {}))
+            metrics.update(axes)
+            
             report['ecg_metrics'] = metrics
             report['metrics_status'] = metrics_status
             logger.info(f"✓ ECG metrics added: {list(metrics.keys())}")
@@ -242,7 +352,50 @@ def predict():
             logger.error(f"Could not generate signal preview: {e}", exc_info=True)
             report['signal_preview'] = []
 
+        # ---- Convert 12-lead to JSON-serializable format ----
+        try:
+            if report.get('leads_12'):
+                leads_json = {}
+                for lead_name, lead_signal in report['leads_12'].items():
+                    if isinstance(lead_signal, np.ndarray):
+                        # Normalize to [-1, 1] for display
+                        sig_min = float(lead_signal.min())
+                        sig_max = float(lead_signal.max())
+                        sig_range = sig_max - sig_min
+                        if sig_range > 1e-8:
+                            leads_json[lead_name] = ((lead_signal - sig_min) / sig_range * 2 - 1).tolist()
+                        else:
+                            leads_json[lead_name] = lead_signal.tolist()
+                    else:
+                        leads_json[lead_name] = lead_signal
+                report['leads_12'] = leads_json
+                logger.info(f"✓ 12-lead data converted to JSON format")
+        except Exception as e:
+            logger.error(f"Could not convert 12-lead data: {e}", exc_info=True)
+            report['leads_12'] = {}
+
         logger.info(f"Final report keys: {list(report.keys())}")
+        
+        # ---- Final JSON serialization fix ----
+        # Convert all remaining numpy types to Python native types
+        try:
+            def convert_to_serializable(obj):
+                """Recursively convert numpy types to native Python types."""
+                if isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                elif isinstance(obj, (np.integer, np.floating)):
+                    return obj.item()
+                elif isinstance(obj, dict):
+                    return {k: convert_to_serializable(v) for k, v in obj.items()}
+                elif isinstance(obj, (list, tuple)):
+                    return [convert_to_serializable(item) for item in obj]
+                return obj
+            
+            report = convert_to_serializable(report)
+            logger.info("✓ Report fully serialized for JSON")
+        except Exception as e:
+            logger.warning(f"Serialization warning: {e}")
+        
         return jsonify(report), 200
 
     except Exception as e:
@@ -346,6 +499,92 @@ def info():
         'supported_formats': list(ALLOWED_EXTENSIONS),
         'engine_status': 'Ready' if engine else 'Failed'
     }), 200
+
+
+@app.route('/api/report', methods=['POST'])
+def generate_report():
+    """
+    Generate PDF clinical report with patient info and metrics.
+    """
+    try:
+        if engine is None:
+            return jsonify({'error': 'Engine not initialized'}), 500
+        
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Patient information
+        patient_id = data.get('patient_id', 'N/A')
+        patient_name = data.get('patient_name', 'Anonymous')
+        patient_age = data.get('patient_age', 'N/A')
+        patient_sex = data.get('patient_sex', 'N/A')
+        doctor_name = data.get('doctor_name', 'N/A')
+        indication = data.get('indication', 'Routine Checkup')
+        
+        # ECG Data
+        signal = data.get('signal', [])
+        if isinstance(signal, list) and len(signal) > 0:
+            signal = np.array(signal, dtype=np.float32)
+        else:
+            return jsonify({'error': 'No signal data provided'}), 400
+        
+        # Get metrics and classification if provided (from the report data)
+        ecg_metrics = data.get('ecg_metrics', {})
+        classification = data.get('classification', {})
+        waveforms = data.get('waveforms', {})
+        leads_12 = data.get('leads_12', {})  # Get 12-lead data if provided
+        
+        # ---- Generate PDF ----
+        report_filename = f"ECG_Report_{patient_name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        report_path = Path(app.config['UPLOAD_FOLDER']) / report_filename
+        
+        generator = ECGReportGenerator(str(report_path))
+        
+        # Create recommendation from classification
+        recommendation = {
+            'status': 'Normal' if classification.get('class_name') == 'Normal' else 'Abnormal',
+            'action': 'Consult cardiologist' if classification.get('class_name') != 'Normal' else 'No action needed',
+            'follow_up': 'Routine follow-up' if classification.get('class_name') == 'Normal' else 'Follow-up as recommended'
+        }
+        
+        generator.generate(
+            signal=signal,
+            binary_result={'class_name': 'Normal'},  # Placeholder
+            multiclass_result=classification,
+            ecg_metrics=ecg_metrics,
+            waveforms=waveforms,
+            recommendation=recommendation,
+            patient_id=patient_id,
+            patient_name=patient_name,
+            patient_age=patient_age,
+            patient_sex=patient_sex,
+            doctor_name=doctor_name,
+            indication=indication
+        )
+        
+        # ---- Return PDF ----
+        with open(report_path, 'rb') as f:
+            pdf_data = f.read()
+        
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename="{report_filename}"'
+        
+        logger.info(f"✓ Report generated and sent: {report_filename}")
+        
+        # Clean up
+        try:
+            report_path.unlink()
+        except:
+            pass
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Report generation error: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
 
 # ============================================================================

@@ -508,6 +508,7 @@ def create_engine(
 ) -> ECGInferenceEngine:
     """
     Create and initialize inference engine.
+    Downloads models from cloud if running on Railway.
     
     Args:
         binary_model_path: Path to binary model (default from project)
@@ -517,20 +518,26 @@ def create_engine(
     Returns:
         Initialized ECGInferenceEngine
     """
+    import os
+    
+    # Check if running on Railway (deployment environment)
+    is_railway = os.environ.get('RAILWAY_ENVIRONMENT') is not None
+    
+    if is_railway:
+        # Option: Download from S3/cloud storage
+        # For now, assume models are in repo
+        logger.info("Running on Railway - using local models")
+    
     # Default paths - NEWLY TRAINED MODELS
     if binary_model_path is None:
-        # Use enhanced binary CNN (checkpoint from epoch 32 with 95.33% accuracy)
-        binary_model_path = Path('Binary_Classification/OneD_CNN/model_enhanced_cnn.keras')
-        # Fallback to h5 if keras not available
+        binary_model_path = Path('Binary_Classification/OneD_CNN/model_1d_cnn.h5')
         if not binary_model_path.exists():
-            binary_model_path = Path('Binary_Classification/OneD_CNN/model_1d_cnn.h5')
+            binary_model_path = Path('Binary_Classification/OneD_CNN/model_enhanced_cnn.keras')
     else:
         binary_model_path = Path(binary_model_path)
     
     if multiclass_model_path is None:
-        # Use best multi-class model (checkpoint from epoch 40 with 91.58% accuracy)
         multiclass_model_path = Path('Multi_Class_Classification/output/models/checkpoint_epoch_40.pt')
-        # Fallback to best_model.pt
         if not multiclass_model_path.exists():
             multiclass_model_path = Path('Multi_Class_Classification/output/models/best_model.pt')
     else:

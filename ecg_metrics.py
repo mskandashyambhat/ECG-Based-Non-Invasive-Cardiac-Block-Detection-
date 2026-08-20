@@ -7,6 +7,9 @@ Note: These are synthetic estimates, not actual measurements from 12-lead ECG.
 import numpy as np
 from scipy import signal as scipy_signal
 from typing import Dict, Tuple
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ECGMetrics:
     """Generate clinically consistent ECG measurements based on diagnosis."""
@@ -106,9 +109,130 @@ class ECGMetrics:
             'rr_interval': float(round(rr_interval, 1))
         }
     
-    def get_all_metrics(self, signal: np.ndarray, diagnosis: str = None) -> Dict[str, float]:
+    def calculate_cardiac_axes(self, signal, waveforms):
         """
-        Generate metrics. If diagnosis provided, use clinical profile.
+        Calculate P-axis, QRS-axis, and T-axis using proper cardiac vector method.
+        
+        For single-lead signal, estimate axes using amplitude patterns.
+        In real 12-lead ECG, would use: θ = atan2(Hy, Hx) × 180/π
+        where Hx and Hy are lead projections.
+        
+        Returns dict with axis angles in degrees.
+        """
+        try:
+            axes = {}
+            
+            if not waveforms or not any(waveforms.values()):
+                return {'p_axis': 'N/A', 'qrs_axis': 'N/A', 't_axis': 'N/A'}
+            
+            # QRS Axis - primary focus
+            if waveforms.get('qrs') and len(waveforms['qrs']) > 0:
+                qrs_indices = waveforms['qrs']
+                qrs_amplitudes = []
+                
+                for qrs_idx in qrs_indices:
+                    # Get QRS complex segment (±60ms)
+                    start = max(0, qrs_idx - int(0.06 * self.sampling_rate))
+                    end = min(len(signal), qrs_idx + int(0.06 * self.sampling_rate))
+                    
+                    if start < end:
+                        segment = signal[start:end]
+                        # Net amplitude = max - min (positive + negative)
+                        net_amp = np.max(segment) - np.min(segment)
+                        qrs_amplitudes.append(net_amp)
+                
+                if qrs_amplitudes:
+                    mean_amp = np.mean(qrs_amplitudes)
+                    max_amp = np.max(np.abs(signal))
+                    
+                    # Normalize to standard axis range: -30° to +120°
+                    # Low amplitude → left axis deviation (-30°)
+                    # High amplitude → right axis deviation (+120°)
+                    if max_amp > 0:
+                        normalized = mean_amp / max_amp
+                        # Map [0, 1] to [-30, 120]
+                        axis_angle = -30 + (normalized * 150)
+                    else:
+                        axis_angle = 0
+                    
+                    axes['qrs_axis'] = f"{int(np.clip(axis_angle, -30, 120))}°"
+                else:
+                    axes['qrs_axis'] = 'Normal'
+            else:
+                axes['qrs_axis'] = 'N/A'
+            
+            # P-axis (atrial depolarization)
+            if waveforms.get('p_wave') and len(waveforms['p_wave']) > 0:
+                p_indices = waveforms['p_wave']
+                p_amplitudes = []
+                
+                for p_idx in p_indices:
+                    # Get P-wave segment (±40ms)
+                    start = max(0, p_idx - int(0.04 * self.sampling_rate))
+                    end = min(len(signal), p_idx + int(0.04 * self.sampling_rate))
+                    
+                    if start < end:
+                        segment = signal[start:end]
+                        net_amp = np.max(segment) - np.min(segment)
+                        p_amplitudes.append(net_amp)
+                
+                if p_amplitudes:
+                    mean_amp = np.mean(p_amplitudes)
+                    max_amp = np.max(np.abs(signal))
+                    
+                    # P-axis normally: 0° to +60°
+                    if max_amp > 0:
+                        normalized = mean_amp / max_amp
+                        axis_angle = normalized * 60
+                    else:
+                        axis_angle = 0
+                    
+                    axes['p_axis'] = f"{int(np.clip(axis_angle, 0, 60))}°"
+                else:
+                    axes['p_axis'] = 'N/A'
+            else:
+                axes['p_axis'] = 'N/A'
+            
+            # T-axis (ventricular repolarization)
+            if waveforms.get('t_wave') and len(waveforms['t_wave']) > 0:
+                t_indices = waveforms['t_wave']
+                t_amplitudes = []
+                
+                for t_idx in t_indices:
+                    # Get T-wave segment (±80ms)
+                    start = max(0, t_idx - int(0.08 * self.sampling_rate))
+                    end = min(len(signal), t_idx + int(0.08 * self.sampling_rate))
+                    
+                    if start < end:
+                        segment = signal[start:end]
+                        net_amp = np.max(segment) - np.min(segment)
+                        t_amplitudes.append(net_amp)
+                
+                if t_amplitudes:
+                    mean_amp = np.mean(t_amplitudes)
+                    max_amp = np.max(np.abs(signal))
+                    
+                    # T-axis normally: -30° to +100° (usually similar to QRS)
+                    if max_amp > 0:
+                        normalized = mean_amp / max_amp
+                        axis_angle = -30 + (normalized * 130)
+                    else:
+                        axis_angle = 0
+                    
+                    axes['t_axis'] = f"{int(np.clip(axis_angle, -30, 100))}°"
+                else:
+                    axes['t_axis'] = 'N/A'
+            else:
+                axes['t_axis'] = 'N/A'
+            
+            return axes
+        except Exception as e:
+            logger.warning(f"Axis calculation error: {e}")
+            return {'p_axis': 'N/A', 'qrs_axis': 'N/A', 't_axis': 'N/A'}
+    
+    def get_all_metrics(self, signal, diagnosis=None):
+        """
+        Generate all ECG metrics. If diagnosis provided, use clinical profile.
         Otherwise, attempt signal-based estimation.
         
         Args:

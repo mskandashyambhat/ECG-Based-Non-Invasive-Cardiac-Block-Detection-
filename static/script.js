@@ -1,4 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Theme Toggle
+  const themeToggle = document.getElementById('themeToggle');
+  
+  // Initialize theme from localStorage
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  if (savedTheme === 'light') {
+    themeToggle.checked = true;
+  }
+  
+  themeToggle.addEventListener('change', () => {
+    const newTheme = themeToggle.checked ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+  });
+  
   const elements = {
     dropZone: document.getElementById('dropZone'),
     fileInput: document.getElementById('fileInput'),
@@ -18,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     diagnosisClass: document.getElementById('diagnosisClass'),
     diagnosisBadge: document.getElementById('diagnosisBadge'),
-    diagnosisConfidence: document.getElementById('diagnosisConfidence'),
     
     metricHR: document.getElementById('metricHR'),
     statusHR: document.getElementById('statusHR'),
@@ -30,14 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     statusQT: document.getElementById('statusQT'),
     
     binaryLabel: document.getElementById('binaryLabel'),
-    binaryConfFill: document.getElementById('binaryConfFill'),
-    binaryConf: document.getElementById('binaryConf'),
-    
     multiclassLabel: document.getElementById('multiclassLabel'),
-    multiclassConfFill: document.getElementById('multiclassConfFill'),
-    multiclassConf: document.getElementById('multiclassConf'),
-    
-    probList: document.getElementById('probList'),
     
     severityStatus: document.getElementById('severityStatus'),
     severityAction: document.getElementById('severityAction'),
@@ -46,6 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentFile = null;
   let currentReportData = null;
+  let patientInfo = {
+    name: '',
+    id: '',
+    age: '',
+    sex: '',
+    doctor: '',
+    indication: 'Routine Checkup'
+  };
 
   // --- File Upload ---
   elements.dropZone.addEventListener('dragover', (e) => {
@@ -73,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   elements.dropZone.addEventListener('click', (e) => {
-    // Don't trigger if clicking on the button itself (button has its own listener)
     if (e.target !== elements.dropLink && !e.target.closest('button')) {
       elements.fileInput.click();
     }
@@ -198,17 +213,25 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (data.signal && data.signal.length > 0) {
       renderECGCanvas(data.signal, elements.ecgCanvas);
     } else {
-      // Fallback: render a minimal representation
       const fallbackSignal = Array.from({length: 300}, (_, i) => Math.sin(i * 0.1) * 0.5);
       renderECGCanvas(fallbackSignal, elements.ecgCanvas);
     }
+    
+    // Display 12-lead ECG
+    if (data.leads_12) {
+      render12LeadECG(data.leads_12);
+    }
+    
+    // Display advanced visualizations
+    if (data.waveforms) displayWaveforms(data.waveforms);
+    if (data.attention) displayAttention(data.attention, data.attention_regions);
+    if (data.feature_importance) displayFeatureImportance(data.feature_importance);
   }
 
   // --- Canvas Rendering ---
   function renderECGCanvas(signal, canvasEl) {
     const ctx = canvasEl.getContext('2d');
     
-    // Set logical size for high DPI
     const rect = canvasEl.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
     canvasEl.width = rect.width * dpr;
@@ -218,11 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const width = rect.width;
     const height = rect.height;
 
-    // Background
     ctx.fillStyle = '#0D0D0D';
     ctx.fillRect(0, 0, width, height);
 
-    // Grid
     ctx.strokeStyle = 'rgba(255,255,255,0.04)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -231,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
     for(let y = 0; y <= height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
     ctx.stroke();
 
-    // Signal
     if (!signal || signal.length === 0) return;
 
     let min = Math.min(...signal);
@@ -239,22 +259,89 @@ document.addEventListener('DOMContentLoaded', () => {
     let range = max - min;
     if (range === 0) range = 1;
 
-    // Add padding
-    const padding = height * 0.2;
+    const padding = height * 0.15;
     const drawHeight = height - (padding * 2);
 
     ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.beginPath();
 
-    const step = width / (signal.length - 1);
+    const step = width / (signal.length - 1 || 1);
     
     for(let i = 0; i < signal.length; i++) {
       const normalized = (signal[i] - min) / range;
       const x = i * step;
-      // Invert Y axis for drawing
+      const y = height - padding - (normalized * drawHeight);
+      
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    
+    ctx.stroke();
+  }
+
+  function render12LeadECG(leads) {
+    // Standard 12-lead canvas IDs
+    const leadIds = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6'];
+    
+    leadIds.forEach(leadName => {
+      const canvasId = 'lead' + (leadName === 'aVR' ? 'AVR' : leadName === 'aVL' ? 'AVL' : leadName === 'aVF' ? 'AVF' : leadName);
+      const canvasEl = document.getElementById(canvasId);
+      
+      if (canvasEl && leads[leadName]) {
+        renderLeadCanvas(leads[leadName], canvasEl);
+      }
+    });
+  }
+
+  function renderLeadCanvas(signal, canvasEl) {
+    const ctx = canvasEl.getContext('2d');
+    
+    const rect = canvasEl.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvasEl.width = rect.width * dpr;
+    canvasEl.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    
+    const width = rect.width;
+    const height = rect.height;
+
+    // Background with grid
+    ctx.fillStyle = '#0D0D0D';
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    const gridSize = 10;
+    for(let x = 0; x <= width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+    for(let y = 0; y <= height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+    ctx.stroke();
+
+    if (!signal || signal.length === 0) return;
+
+    let min = Math.min(...signal);
+    let max = Math.max(...signal);
+    let range = max - min;
+    if (range === 0) range = 1;
+
+    const padding = height * 0.1;
+    const drawHeight = height - (padding * 2);
+
+    // Draw lead signal
+    ctx.strokeStyle = '#00FF00';
+    ctx.lineWidth = 0.8;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+
+    const step = width / (signal.length - 1 || 1);
+    
+    for(let i = 0; i < signal.length; i++) {
+      const normalized = (signal[i] - min) / range;
+      const x = i * step;
       const y = height - padding - (normalized * drawHeight);
       
       if (i === 0) ctx.moveTo(x, y);
@@ -270,7 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const step = (timestamp) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      // easeOutQuart
       const ease = 1 - Math.pow(1 - progress, 4);
       const current = (start + (end - start) * ease).toFixed(1);
       
@@ -306,47 +392,243 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.filePreview.classList.add('hidden');
     elements.resultsPanel.classList.add('hidden');
     elements.uploadPanel.classList.remove('hidden');
-    
-    // Reset bars
-    elements.binaryConfFill.style.width = '0%';
-    elements.multiclassConfFill.style.width = '0%';
   });
 
   elements.downloadBtn.addEventListener('click', () => {
     if (!currentReportData) return;
-    
-    const data = currentReportData;
-    const reportText = `
-CARDIOSCAN ECG ANALYSIS REPORT
-Date: ${new Date().toLocaleString()}
-File: ${currentFile ? currentFile.name : 'Unknown'}
-
---- DIAGNOSIS ---
-Primary: ${data.multiclass_classification.class_name}
-Screening: ${data.binary_classification.class_name}
-
---- METRICS ---
-Heart Rate: ${data.ecg_metrics.heart_rate} bpm [${data.metrics_status.heart_rate}]
-PR Interval: ${data.ecg_metrics.pr_interval} ms [${data.metrics_status.pr_interval}]
-QRS Duration: ${data.ecg_metrics.qrs_duration} ms [${data.metrics_status.qrs_duration}]
-QT Interval: ${data.ecg_metrics.qt_interval} ms [${data.metrics_status.qt_interval}]
-
---- CLINICAL ASSESSMENT ---
-Status: ${data.recommendation.status}
-Recommendation: ${data.recommendation.action}
-Follow-up: ${data.recommendation.follow_up}
-
-Generated by CardioScan System v2.0
-`;
-
-    const blob = new Blob([reportText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `CardioScan_Report_${Date.now()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    document.getElementById('patientModal').classList.remove('hidden');
   });
+
+  // Modal controls
+  const modal = document.getElementById('patientModal');
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  const modalClose = document.getElementById('modalClose');
+  const modalCancel = document.getElementById('modalCancel');
+  const modalConfirm = document.getElementById('modalConfirm');
+
+  function closeModal() {
+    modal.classList.add('hidden');
+  }
+
+  modalClose.addEventListener('click', closeModal);
+  modalCancel.addEventListener('click', closeModal);
+  modalBackdrop.addEventListener('click', closeModal);
+
+  modalConfirm.addEventListener('click', async () => {
+    // Validate patient info
+    patientInfo.name = document.getElementById('patientName').value.trim();
+    patientInfo.age = document.getElementById('patientAge').value.trim();
+    patientInfo.doctor = document.getElementById('doctorName').value.trim();
+    patientInfo.id = document.getElementById('patientID').value.trim() || 'N/A';
+    patientInfo.sex = document.getElementById('patientSex').value || '';
+    patientInfo.indication = document.getElementById('indication').value.trim() || 'Routine Checkup';
+
+    if (!patientInfo.name) {
+      showError('Patient name is required');
+      return;
+    }
+    if (!patientInfo.age) {
+      showError('Patient age is required');
+      return;
+    }
+    if (!patientInfo.doctor) {
+      showError('Doctor name is required');
+      return;
+    }
+    
+    try {
+      modalConfirm.disabled = true;
+      modalConfirm.textContent = 'Generating PDF...';
+      
+      const response = await fetch('/api/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signal: currentReportData.signal_preview || [],
+          patient_id: patientInfo.id,
+          patient_name: patientInfo.name,
+          patient_age: patientInfo.age,
+          patient_sex: patientInfo.sex,
+          doctor_name: patientInfo.doctor,
+          indication: patientInfo.indication,
+          ecg_metrics: currentReportData.ecg_metrics || {},
+          classification: currentReportData.multiclass_classification || {},
+          waveforms: currentReportData.waveforms || {},
+          attention: currentReportData.attention
+        })
+      });
+      
+      if (!response.ok) throw new Error('Report generation failed');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ECG_Report_${patientInfo.name}_${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      closeModal();
+      modalConfirm.textContent = 'Generate Report';
+    } catch (error) {
+      showError('Failed to generate PDF: ' + error.message);
+      modalConfirm.textContent = 'Generate Report';
+    } finally {
+      modalConfirm.disabled = false;
+    }
+  });
+
+  // --- Advanced Visualization Functions ---
+  
+  function displayWaveforms(waveforms) {
+    if (!waveforms || Object.keys(waveforms).length === 0) return;
+    
+    const panel = document.getElementById('waveformsPanel');
+    if (!panel) return;
+    
+    const qrsCount = (waveforms.qrs || []).length;
+    const pCount = (waveforms.p_wave || []).length;
+    const tCount = (waveforms.t_wave || []).length;
+    
+    document.getElementById('qrsCount').textContent = qrsCount;
+    document.getElementById('pCount').textContent = pCount;
+    document.getElementById('tCount').textContent = tCount;
+    
+    if (qrsCount > 0 || pCount > 0 || tCount > 0) {
+      panel.classList.remove('hidden');
+    }
+  }
+  
+  function displayAttention(attentionData, topRegions) {
+    if (!attentionData) return;
+    
+    const panel = document.getElementById('attentionPanel');
+    if (!panel) return;
+    
+    // Show the panel regardless
+    panel.classList.remove('hidden');
+    
+    const canvas = document.getElementById('attentionCanvas');
+    if (canvas) renderAttentionHeatmap(attentionData, canvas);
+    
+    // Display top regions if available
+    if (topRegions && topRegions.length > 0) {
+      const regions = topRegions.map((r, idx) => {
+        const percentage = typeof r === 'object' ? r.percentage : (r * 100).toFixed(1);
+        return `${percentage}%`;
+      }).join(', ');
+      document.getElementById('attentionValues').textContent = `Top regions: ${regions}`;
+    } else {
+      // Show placeholder if no regions
+      document.getElementById('attentionValues').textContent = 'Model attention regions detected';
+    }
+  }
+  
+  function renderAttentionHeatmap(attention, canvasEl) {
+    const ctx = canvasEl.getContext('2d');
+    const rect = canvasEl.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    
+    canvasEl.width = rect.width * dpr;
+    canvasEl.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    
+    const width = rect.width;
+    const height = rect.height;
+    
+    ctx.fillStyle = '#0D0D0D';
+    ctx.fillRect(0, 0, width, height);
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const gridSize = 20;
+    for(let x = 0; x <= width; x += gridSize) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+    for(let y = 0; y <= height; y += gridSize) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+    ctx.stroke();
+    
+    if (!attention || attention.length === 0) return;
+    
+    const barWidth = width / attention.length;
+    const maxVal = Math.max(...attention);
+    const minVal = Math.min(...attention);
+    const range = maxVal - minVal || 1;
+    
+    for (let i = 0; i < attention.length; i++) {
+      const val = attention[i];
+      const normalized = (val - minVal) / range;
+      const barHeight = normalized * height;
+      
+      let hue, saturation;
+      if (normalized < 0.25) {
+        hue = 240;
+        saturation = 50 + (normalized / 0.25) * 50;
+      } else if (normalized < 0.5) {
+        hue = 180 - ((normalized - 0.25) / 0.25) * 60;
+        saturation = 100;
+      } else if (normalized < 0.75) {
+        hue = 120 - ((normalized - 0.5) / 0.25) * 60;
+        saturation = 100;
+      } else {
+        hue = 60 - ((normalized - 0.75) / 0.25) * 60;
+        saturation = 100;
+      }
+      
+      ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${40 + normalized * 20}%)`;
+      ctx.fillRect(i * barWidth, height - barHeight, barWidth, barHeight);
+    }
+    
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, width, height);
+  }
+  
+  function displayFeatureImportance(importance) {
+    if (!importance) return;
+    
+    const panel = document.getElementById('importancePanel');
+    if (!panel) return;
+    
+    panel.classList.remove('hidden');
+    const canvas = document.getElementById('importanceCanvas');
+    if (canvas) renderFeatureImportance(importance, canvas);
+  }
+  
+  function renderFeatureImportance(importance, canvasEl) {
+    const ctx = canvasEl.getContext('2d');
+    const rect = canvasEl.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    
+    canvasEl.width = rect.width * dpr;
+    canvasEl.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    
+    const width = rect.width;
+    const height = rect.height;
+    
+    ctx.fillStyle = '#0D0D0D';
+    ctx.fillRect(0, 0, width, height);
+    
+    if (!importance || importance.length === 0) return;
+    
+    const lineWidth = width / importance.length;
+    const maxVal = Math.max(...importance);
+    
+    ctx.strokeStyle = '#00e676';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    
+    for (let i = 0; i < importance.length; i++) {
+      const normalized = importance[i] / maxVal;
+      const y = height - (normalized * height * 0.8);
+      
+      if (i === 0) ctx.moveTo(i * lineWidth, y);
+      else ctx.lineTo(i * lineWidth, y);
+    }
+    
+    ctx.stroke();
+  }
+  
 });
