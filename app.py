@@ -323,8 +323,16 @@ def predict():
             metrics = metrics_calc.get_all_metrics(signal, diagnosis=multiclass_diagnosis)
             metrics_status = metrics_calc.get_metrics_status(metrics, diagnosis=multiclass_diagnosis)
             
-            # Calculate axes
-            axes = metrics_calc.calculate_cardiac_axes(signal, report.get('waveforms', {}))
+            # Calculate axes using 12-lead signals
+            lead_signals_dict = {}
+            if 'leads_full' in report and report['leads_full']:
+                # Extract limb leads for axis calculation
+                limb_leads = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF']
+                for lead_name in limb_leads:
+                    if lead_name in report['leads_full']:
+                        lead_signals_dict[lead_name] = report['leads_full'][lead_name]
+            
+            axes = metrics_calc.calculate_cardiac_axes(lead_signals_dict, report.get('waveforms', {}))
             metrics.update(axes)
             
             report['ecg_metrics'] = metrics
@@ -676,4 +684,5 @@ if __name__ == '__main__':
     logger.info("Supported formats: " + ", ".join(ALLOWED_EXTENSIONS))
     logger.info("═" * 60)
 
-    app.run(debug=False, host=host, port=port)
+    # Use Flask with threading for stability
+    app.run(debug=False, host=host, port=port, threaded=True)

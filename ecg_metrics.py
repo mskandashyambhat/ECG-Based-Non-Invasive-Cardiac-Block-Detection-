@@ -109,123 +109,125 @@ class ECGMetrics:
             'rr_interval': float(round(rr_interval, 1))
         }
     
-    def calculate_cardiac_axes(self, signal, waveforms):
+    def calculate_cardiac_axes(self, lead_signals, waveforms):
         """
-        Calculate P-axis, QRS-axis, and T-axis using proper cardiac vector method.
+        Calculate P-axis, QRS-axis, and T-axis using proper cardiac vector method with 6 limb leads.
         
-        For single-lead signal, estimate axes using amplitude patterns.
-        In real 12-lead ECG, would use: θ = atan2(Hy, Hx) × 180/π
-        where Hx and Hy are lead projections.
+        Uses least-squares fitting with all 6 limb leads:
+        V_i = Hx * cos(θ_i) + Hy * sin(θ_i)
+        θ = atan2(Hy, Hx) × 180/π
         
-        Returns dict with axis angles in degrees.
+        Args:
+            lead_signals: Dictionary with keys 'I', 'II', 'III', 'aVR', 'aVL', 'aVF'
+            waveforms: Dictionary with detected waveform locations
+        
+        Returns:
+            Dictionary with axis angles in degrees.
         """
         try:
+            # Standard frontal plane angles for each limb lead
+            lead_angles = {
+                'I': 0,
+                'II': 60,
+                'III': 120,
+                'aVR': -150,
+                'aVL': -30,
+                'aVF': 90
+            }
+            
             axes = {}
             
-            if not waveforms or not any(waveforms.values()):
+            if not lead_signals or not waveforms:
                 return {'p_axis': 'N/A', 'qrs_axis': 'N/A', 't_axis': 'N/A'}
             
-            # QRS Axis - primary focus
-            if waveforms.get('qrs') and len(waveforms['qrs']) > 0:
-                qrs_indices = waveforms['qrs']
-                qrs_amplitudes = []
-                
-                for qrs_idx in qrs_indices:
-                    # Get QRS complex segment (±60ms)
-                    start = max(0, qrs_idx - int(0.06 * self.sampling_rate))
-                    end = min(len(signal), qrs_idx + int(0.06 * self.sampling_rate))
-                    
-                    if start < end:
-                        segment = signal[start:end]
-                        # Net amplitude = max - min (positive + negative)
-                        net_amp = np.max(segment) - np.min(segment)
-                        qrs_amplitudes.append(net_amp)
-                
-                if qrs_amplitudes:
-                    mean_amp = np.mean(qrs_amplitudes)
-                    max_amp = np.max(np.abs(signal))
-                    
-                    # Normalize to standard axis range: -30° to +120°
-                    # Low amplitude → left axis deviation (-30°)
-                    # High amplitude → right axis deviation (+120°)
-                    if max_amp > 0:
-                        normalized = mean_amp / max_amp
-                        # Map [0, 1] to [-30, 120]
-                        axis_angle = -30 + (normalized * 150)
-                    else:
-                        axis_angle = 0
-                    
-                    axes['qrs_axis'] = f"{int(np.clip(axis_angle, -30, 120))}°"
-                else:
-                    axes['qrs_axis'] = 'Normal'
-            else:
-                axes['qrs_axis'] = 'N/A'
+            # Calculate for each waveform type (P, QRS, T)
+            waveform_types = {
+                'qrs': ('qrs', 'qrs_axis', 60),  # (waveform_key, axis_key, window_ms)
+                'p_wave': ('p_wave', 'p_axis', 40),
+                't_wave': ('t_wave', 't_axis', 80)
+            }
             
-            # P-axis (atrial depolarization)
-            if waveforms.get('p_wave') and len(waveforms['p_wave']) > 0:
-                p_indices = waveforms['p_wave']
-                p_amplitudes = []
+            for wf_key, (waveform_name, axis_name, window_ms) in waveform_types.items():
+                if wf_key not in waveforms or not waveforms[wf_key]:
+                    axes[axis_name] = 'N/A'
+                    continue
                 
-                for p_idx in p_indices:
-                    # Get P-wave segment (±40ms)
-                    start = max(0, p_idx - int(0.04 * self.sampling_rate))
-                    end = min(len(signal), p_idx + int(0.04 * self.sampling_rate))
-                    
-                    if start < end:
-                        segment = signal[start:end]
-                        net_amp = np.max(segment) - np.min(segment)
-                        p_amplitudes.append(net_amp)
+                # Get net amplitudes for this waveform in each limb lead
+                net_amplitudes = {}
+                window_samples = int(window_ms * self.sampling_rate / 1000)
                 
-                if p_amplitudes:
-                    mean_amp = np.mean(p_amplitudes)
-                    max_amp = np.max(np.abs(signal))
+                for lead_name in ['I', 'II', 'III', 'aVR', 'aVL', 'aVF']:
+                    if lead_name not in lead_signals:
+                        continue
                     
-                    # P-axis normally: 0° to +60°
-                    if max_amp > 0:
-                        normalized = mean_amp / max_amp
-                        axis_angle = normalized * 60
-                    else:
-                        axis_angle = 0
+                    signal = lead_signals[lead_name]
+                    wf_indices = waveforms[wf_key]
                     
-                    axes['p_axis'] = f"{int(np.clip(axis_angle, 0, 60))}°"
-                else:
-                    axes['p_axis'] = 'N/A'
-            else:
-                axes['p_axis'] = 'N/A'
-            
-            # T-axis (ventricular repolarization)
-            if waveforms.get('t_wave') and len(waveforms['t_wave']) > 0:
-                t_indices = waveforms['t_wave']
-                t_amplitudes = []
+                    # Calculate net amplitude (positive - negative deflection)
+                    amplitudes = []
+                    for wf_idx in wf_indices:
+                        start = max(0, wf_idx - window_samples)
+                        end = min(len(signal), wf_idx + window_samples)
+                        
+                        if start < end:
+                            segment = signal[start:end]
+                            # Net amplitude = max deflection - min deflection
+                            net_amp = np.max(segment) - np.min(segment)
+                            # Preserve polarity: if net is downward, make negative
+                            if np.abs(np.min(segment)) > np.abs(np.max(segment)):
+                                net_amp = -net_amp
+                            amplitudes.append(net_amp)
+                    
+                    if amplitudes:
+                        net_amplitudes[lead_name] = np.mean(amplitudes)
                 
-                for t_idx in t_indices:
-                    # Get T-wave segment (±80ms)
-                    start = max(0, t_idx - int(0.08 * self.sampling_rate))
-                    end = min(len(signal), t_idx + int(0.08 * self.sampling_rate))
-                    
-                    if start < end:
-                        segment = signal[start:end]
-                        net_amp = np.max(segment) - np.min(segment)
-                        t_amplitudes.append(net_amp)
+                # Need at least 3 leads for reliable calculation
+                if len(net_amplitudes) < 3:
+                    axes[axis_name] = 'N/A'
+                    continue
                 
-                if t_amplitudes:
-                    mean_amp = np.mean(t_amplitudes)
-                    max_amp = np.max(np.abs(signal))
+                # Least-squares solution for Hx and Hy
+                # V_i = Hx * cos(θ_i) + Hy * sin(θ_i)
+                # Set up matrices: A * [Hx, Hy]^T = V
+                A = []
+                V = []
+                
+                for lead_name, net_amp in net_amplitudes.items():
+                    theta_rad = np.deg2rad(lead_angles[lead_name])
+                    A.append([np.cos(theta_rad), np.sin(theta_rad)])
+                    V.append(net_amp)
+                
+                A = np.array(A)
+                V = np.array(V)
+                
+                # Solve using least squares
+                try:
+                    H, residuals, rank, s = np.linalg.lstsq(A, V, rcond=None)
+                    Hx, Hy = H[0], H[1]
                     
-                    # T-axis normally: -30° to +100° (usually similar to QRS)
-                    if max_amp > 0:
-                        normalized = mean_amp / max_amp
-                        axis_angle = -30 + (normalized * 130)
-                    else:
-                        axis_angle = 0
+                    # Calculate axis angle: θ = atan2(Hy, Hx) × 180/π
+                    axis_angle = np.rad2deg(np.arctan2(Hy, Hx))
                     
-                    axes['t_axis'] = f"{int(np.clip(axis_angle, -30, 100))}°"
-                else:
-                    axes['t_axis'] = 'N/A'
-            else:
-                axes['t_axis'] = 'N/A'
+                    # Normalize to standard ranges
+                    if axis_name == 'qrs_axis':
+                        # QRS: -30° to +120° (with wrapping for -180 to +180 range)
+                        if axis_angle < -30:
+                            axis_angle += 360
+                        axes[axis_name] = f"{int(axis_angle)}°"
+                    elif axis_name == 'p_axis':
+                        # P: 0° to +75° typically
+                        if axis_angle < 0:
+                            axis_angle += 360
+                        axes[axis_name] = f"{int(axis_angle)}°"
+                    elif axis_name == 't_axis':
+                        # T: should be similar to QRS (within 45° normally)
+                        axes[axis_name] = f"{int(axis_angle)}°"
+                    
+                except np.linalg.LinAlgError:
+                    axes[axis_name] = 'N/A'
             
             return axes
+            
         except Exception as e:
             logger.warning(f"Axis calculation error: {e}")
             return {'p_axis': 'N/A', 'qrs_axis': 'N/A', 't_axis': 'N/A'}
