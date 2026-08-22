@@ -884,34 +884,6 @@ button { cursor: pointer; font-family: var(--f-sans); }
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
-.attention-regions {
-  margin-top: var(--sp-4);
-  padding: var(--sp-3);
-  background: var(--c-surface-2);
-  border-left: 3px solid rgba(0, 230, 118, 0.5);
-  border-radius: var(--r-md);
-}
-
-.attention-region {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.region-label {
-  color: var(--c-text-secondary);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.region-values {
-  font-family: var(--f-mono);
-  color: #00e676;
-  font-weight: 600;
-  font-size: 12px;
-  text-shadow: 0 0 8px rgba(0, 230, 118, 0.3);
-}
-
 .panel-subtext {
   color: var(--c-text-secondary);
   font-size: 13px;
