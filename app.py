@@ -202,6 +202,23 @@ def predict():
 
         signal = signal.astype(np.float32)
         logger.info(f"Signal shape: {signal.shape}, dtype: {signal.dtype}")
+        
+        # ---- Validate ECG Signal ----
+        # Check if signal looks like a valid ECG (basic heuristics)
+        if len(signal) < 250:  # Too short for meaningful ECG
+            return jsonify({'error': 'Signal too short. Expected at least 0.5 seconds of ECG data (250 samples at 500Hz).'}), 400
+        
+        if len(signal) > 50000:  # Too long (> 100 seconds)
+            return jsonify({'error': 'Signal too long. Please provide ECG segments up to 100 seconds.'}), 400
+        
+        # Check if signal has reasonable ECG amplitude range (-5 to +5 mV typically)
+        signal_range = np.max(signal) - np.min(signal)
+        if signal_range < 0.01:  # Flat line
+            return jsonify({'error': 'Signal appears to be flat or invalid. Expected cardiac electrical activity.'}), 400
+        
+        # Check for extreme values (likely not ECG)
+        if np.max(np.abs(signal)) > 100:
+            return jsonify({'error': 'Signal amplitudes too large for ECG. Expected range: -5 to +5 mV.'}), 400
 
         # ---- Inference ----
         report = engine.predict(signal)
