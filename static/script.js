@@ -538,18 +538,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const canvas = document.getElementById('attentionCanvas');
     if (canvas) renderAttentionHeatmap(attentionData, canvas);
-    
-    // Display top regions if available
-    if (topRegions && topRegions.length > 0) {
-      const regions = topRegions.map((r, idx) => {
-        const percentage = typeof r === 'object' ? r.percentage : (r * 100).toFixed(1);
-        return `${percentage}%`;
-      }).join(', ');
-      document.getElementById('attentionValues').textContent = `Top regions: ${regions}`;
-    } else {
-      // Show placeholder if no regions
-      document.getElementById('attentionValues').textContent = 'Model attention regions detected';
-    }
   }
   
   function renderAttentionHeatmap(attention, canvasEl) {

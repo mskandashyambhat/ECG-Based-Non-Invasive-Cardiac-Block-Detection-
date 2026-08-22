@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../static/style.css?v=2">
+  <link rel="stylesheet" href="../static/style.css?v=3">
 </head>
 <body>
 
@@ -216,12 +216,6 @@
           <div class="panel-label">MODEL ATTENTION HEATMAP</div>
           <p class="panel-subtext" id="attentionSubtext">Which regions of the ECG signal the model focused on for diagnosis</p>
           <canvas id="attentionCanvas" class="attention-canvas" aria-label="Attention heatmap"></canvas>
-          <div class="attention-regions" id="attentionRegions">
-            <div class="attention-region">
-              <span class="region-label">Top Attention Regions:</span>
-              <span class="region-values" id="attentionValues">—</span>
-            </div>
-          </div>
         </div>
 
         <!-- Feature Importance Panel -->
@@ -324,6 +318,6 @@
 
   </div>
 
-  <script src="../static/script.js?v=2"></script>
+  <script src="../static/script.js?v=3"></script>
 </body>
 </html>
