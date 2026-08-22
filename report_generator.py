@@ -94,7 +94,7 @@ class ECGReportGenerator:
         return buf
     
     def generate(self, signal, binary_result, multiclass_result, 
-                 ecg_metrics=None, attention_weights=None, waveforms=None, 
+                 ecg_metrics=None, metrics_status=None, attention_weights=None, waveforms=None, 
                  recommendation=None, patient_id='N/A', patient_name='Anonymous',
                  patient_age='N/A', patient_sex='N/A', doctor_name='N/A', 
                  indication='Routine Checkup', classification=None, leads_12=None):
@@ -217,8 +217,59 @@ class ECGReportGenerator:
         story.append(Paragraph(interp_text, self.styles['Normal']))
         story.append(Spacer(1, 0.2*inch))
         
-        # FOOTER SECTION
-        story.append(Paragraph("<b>REPORT METADATA</b>", self.styles['SectionHeader']))
+        # CLINICAL NOTES SECTION (NEW)
+        story.append(Paragraph("<b>CLINICAL NOTES</b>", self.styles['SectionHeader']))
+        
+        notes_data = []
+        
+        # Add metric status details
+        if ecg_metrics and metrics_status:
+            hr_status = metrics_status.get('heart_rate', '')
+            pr_status = metrics_status.get('pr_interval', '')
+            qrs_status = metrics_status.get('qrs_duration', '')
+            qt_status = metrics_status.get('qt_interval', '')
+            
+            if hr_status and hr_status != 'Normal':
+                notes_data.append([f"• Heart Rate: {hr_status}"])
+            if pr_status and pr_status != 'Normal':
+                notes_data.append([f"• PR Interval: {pr_status}"])
+            if qrs_status and qrs_status != 'Normal':
+                notes_data.append([f"• QRS Duration: {qrs_status}"])
+            if qt_status and qt_status != 'Normal':
+                notes_data.append([f"• QT Interval: {qt_status}"])
+        
+        # Add diagnostic details based on classification
+        diagnosis = multiclass_result.get('class_name', 'Normal') if multiclass_result else 'Normal'
+        if diagnosis != 'Normal':
+            if 'AV Block' in diagnosis or 'CHB' in diagnosis:
+                notes_data.append([f"• Atrioventricular conduction delay detected"])
+                notes_data.append([f"• PR interval analysis suggests first or second degree AV block"])
+            elif 'RBBB' in diagnosis:
+                notes_data.append([f"• Right bundle branch conduction delay"])
+                notes_data.append([f"• Wide QRS complex with rsR' pattern expected"])
+            elif 'LBBB' in diagnosis:
+                notes_data.append([f"• Left bundle branch conduction delay"])
+                notes_data.append([f"• Prolonged QRS duration with broad R waves"])
+        
+        if notes_data:
+            notes_table = Table(notes_data, colWidths=[6.0*inch])
+            notes_table.setStyle(TableStyle([
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 10),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            story.append(notes_table)
+        else:
+            story.append(Paragraph("No significant abnormalities noted.", self.styles['Normal']))
+        
+        story.append(Spacer(1, 0.2*inch))
+        
+        # REPORT INFORMATION (renamed from METADATA)
+        story.append(Paragraph("<b>REPORT INFORMATION</b>", self.styles['SectionHeader']))
         
         footer_data = [
             ['Machine Interpretation', 'Paper Speed', 'Reviewed By'],

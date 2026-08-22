@@ -599,6 +599,7 @@ def generate_report():
             binary_result={'class_name': 'Normal'},  # Placeholder
             multiclass_result=classification,
             ecg_metrics=ecg_metrics,
+            metrics_status=data.get('metrics_status', {}),
             waveforms=waveforms,
             recommendation=recommendation,
             patient_id=patient_id,
