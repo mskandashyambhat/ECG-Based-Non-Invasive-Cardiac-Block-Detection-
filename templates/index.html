@@ -76,6 +76,59 @@
           <canvas id="ecgCanvas" class="ecg-canvas" aria-label="ECG waveform preview"></canvas>
         </div>
 
+        
+        <div class="panel diagnosis-panel" id="diagnosisPanel">
+          <div class="panel-label">PRIMARY DIAGNOSIS</div>
+          <div class="diagnosis-row">
+            <div class="diagnosis-class" id="diagnosisClass">—</div>
+            <div class="diagnosis-badge" id="diagnosisBadge">—</div>
+          </div>
+        </div>
+
+        <!-- ECG Interval Measurements -->
+        <div class="panel metrics-panel">
+          <div class="panel-label">ECG INTERVAL MEASUREMENTS</div>
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-name">Heart Rate</div>
+              <div class="metric-value mono" id="metricHR">—</div>
+              <div class="metric-unit">bpm</div>
+              <div class="metric-status" id="statusHR">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-name">PR Interval</div>
+              <div class="metric-value mono" id="metricPR">—</div>
+              <div class="metric-unit">ms</div>
+              <div class="metric-status" id="statusPR">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-name">QRS Duration</div>
+              <div class="metric-value mono" id="metricQRS">—</div>
+              <div class="metric-unit">ms</div>
+              <div class="metric-status" id="statusQRS">—</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-name">QT Interval</div>
+              <div class="metric-value mono" id="metricQT">—</div>
+              <div class="metric-unit">ms</div>
+              <div class="metric-status" id="statusQT">—</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel classification-panel">
+          <div class="panel-label">CLASSIFICATION</div>
+          <div class="class-row">
+            <div class="class-block">
+              <div class="class-block-label">BINARY SCREENING</div>
+              <div class="class-block-name" id="binaryLabel">—</div>
+            </div>
+            <div class="class-block">
+              <div class="class-block-label">DETAILED TYPE</div>
+              <div class="class-block-name" id="multiclassLabel">—</div>
+            </div>
+          </div>
+        </div>
+
         <!-- 12-Lead ECG Display -->
         <div class="panel lead-panel-12">
           <div class="panel-label">12-LEAD ECG</div>
@@ -134,57 +187,6 @@
                 <div class="lead-title">V6</div>
                 <canvas id="leadV6" class="lead-canvas" aria-label="Lead V6"></canvas>
               </div>
-            </div>
-          </div>
-        </div>
-        <div class="panel diagnosis-panel" id="diagnosisPanel">
-          <div class="panel-label">PRIMARY DIAGNOSIS</div>
-          <div class="diagnosis-row">
-            <div class="diagnosis-class" id="diagnosisClass">—</div>
-            <div class="diagnosis-badge" id="diagnosisBadge">—</div>
-          </div>
-        </div>
-
-        <!-- ECG Interval Measurements -->
-        <div class="panel metrics-panel">
-          <div class="panel-label">ECG INTERVAL MEASUREMENTS</div>
-          <div class="metrics-grid">
-            <div class="metric-card">
-              <div class="metric-name">Heart Rate</div>
-              <div class="metric-value mono" id="metricHR">—</div>
-              <div class="metric-unit">bpm</div>
-              <div class="metric-status" id="statusHR">—</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-name">PR Interval</div>
-              <div class="metric-value mono" id="metricPR">—</div>
-              <div class="metric-unit">ms</div>
-              <div class="metric-status" id="statusPR">—</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-name">QRS Duration</div>
-              <div class="metric-value mono" id="metricQRS">—</div>
-              <div class="metric-unit">ms</div>
-              <div class="metric-status" id="statusQRS">—</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-name">QT Interval</div>
-              <div class="metric-value mono" id="metricQT">—</div>
-              <div class="metric-unit">ms</div>
-              <div class="metric-status" id="statusQT">—</div>
-            </div>
-          </div>
-        </div>
-        <div class="panel classification-panel">
-          <div class="panel-label">CLASSIFICATION</div>
-          <div class="class-row">
-            <div class="class-block">
-              <div class="class-block-label">BINARY SCREENING</div>
-              <div class="class-block-name" id="binaryLabel">—</div>
-            </div>
-            <div class="class-block">
-              <div class="class-block-label">DETAILED TYPE</div>
-              <div class="class-block-name" id="multiclassLabel">—</div>
             </div>
           </div>
         </div>
@@ -309,11 +311,9 @@
     </main>
 
     <footer class="footer">
-      <span>CardioScan &copy; 2026</span>
+      <span>Deepasree K, Kaushik, M Skanda Shyam Bhat, Paavani K & Swapnalaxmi K &copy; 2026</span>
       <span class="footer-sep">&middot;</span>
-      <span>ML-Powered Cardiac Block Detection</span>
-      <span class="footer-sep">&middot;</span>
-      <span>For research use only</span>
+      
     </footer>
 
   </div>
